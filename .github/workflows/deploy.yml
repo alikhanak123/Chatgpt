@@ -1,0 +1,66 @@
+# Publishes Salah Tracker to Firebase (https://prayertracker.web.app).
+# Runs on every push to main, or by hand from the Actions tab.
+# Needs the repository secret FIREBASE_SERVICE_ACCOUNT (see AGENTS.md, section 9).
+name: Deploy to Firebase
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "What to deploy (firebase --only). Leave empty for: website + any changed rules"
+        required: false
+        default: ""
+
+concurrency:
+  group: deploy-firebase
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Check the Firebase key is set up
+        env:
+          SA: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$SA" ]; then
+            echo "::error::The secret FIREBASE_SERVICE_ACCOUNT is not set, so nothing was deployed. See AGENTS.md section 9."
+            exit 1
+          fi
+          printf '%s' "$SA" > "$RUNNER_TEMP/sa.json"
+
+      - name: Work out what to deploy
+        id: what
+        env:
+          ONLY_INPUT: ${{ github.event.inputs.only }}
+        run: |
+          if [ -n "$ONLY_INPUT" ]; then
+            ONLY="$ONLY_INPUT"
+          else
+            # Always the website (both sites); rules only when their files changed in this push.
+            ONLY="hosting"
+            CHANGED="$(git diff --name-only HEAD^ HEAD 2>/dev/null || true)"
+            echo "$CHANGED" | grep -qE '^(firestore\.rules|firestore\.indexes\.json)$' && ONLY="$ONLY,firestore"
+            echo "$CHANGED" | grep -qx 'database.rules.json' && ONLY="$ONLY,database"
+          fi
+          echo "Deploying: $ONLY"
+          echo "only=$ONLY" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Deploy
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: npx -y firebase-tools@latest deploy --only "${{ steps.what.outputs.only }}" --project family-salah-tracker-765ed --non-interactive
+
+      - name: Remove the key file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sa.json"
