@@ -1,7 +1,18 @@
 {
-  "url": "https://prayertracker--graphics-review-gapc0j2z.web.app",
-  "commit": "dbe79d2f866c47883f8238c69d33ba567f38012d",
-  "deployed_at": "2026-10-21T17:05:09.310Z",
-  "expires_in": "7 days",
-  "sample_data_only": true
+  "url": "https://salah-preview-765ed.web.app",
+  "alternate_url": "https://salah-preview-765ed.firebaseapp.com",
+  "commit": "09402c771fea6250a4ac4ecc48108a3b0b2238ef",
+  "deployed_at": "2026-10-21T17:10:36.746Z",
+  "sample_data_only": true,
+  "site": "salah-preview-765ed",
+  "public_check": {
+    "http": {
+      "https://salah-preview-765ed.web.app": 200,
+      "https://salah-preview-765ed.firebaseapp.com": 200
+    },
+    "browser": true,
+    "pony_eyes": 2,
+    "walking": true,
+    "verified_at": "2026-10-21T17:11:14.332Z"
+  }
 }
