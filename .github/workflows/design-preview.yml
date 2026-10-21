@@ -1,0 +1,74 @@
+name: Publish isolated design preview
+
+on:
+  push:
+    branches: [design-preview]
+    paths:
+      - 'design-preview/**'
+      - '.github/workflows/design-preview.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: isolated-graphics-review
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Publish demo to preview channel only
+        id: publish
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/preview-firebase-key.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$FIREBASE_SERVICE_ACCOUNT" || { echo '::error::Missing FIREBASE_SERVICE_ACCOUNT repository secret.'; exit 1; }
+          umask 077
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
+          trap 'rm -f "$GOOGLE_APPLICATION_CREDENTIALS"' EXIT
+          npx -y firebase-tools@latest hosting:channel:deploy graphics-review \
+            --expires 7d \
+            --config design-preview/firebase.json \
+            --project family-salah-tracker-765ed \
+            --non-interactive --json > "$RUNNER_TEMP/preview-deploy-result.json"
+          node <<'JS'
+          const fs = require('fs');
+          const result = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/preview-deploy-result.json', 'utf8'));
+          if (result.status !== 'success') throw new Error('Preview deployment did not succeed');
+          const urls = [];
+          function find(value) {
+            if (typeof value === 'string' && /^https:\/\/prayertracker--graphics-review-[a-z0-9-]+\.web\.app\/?$/.test(value)) urls.push(value);
+            if (value && typeof value === 'object') Object.values(value).forEach(find);
+          }
+          find(result.result);
+          if (!urls.length) throw new Error('Could not find the isolated Firebase preview URL');
+          const status = {url: urls[0], commit: process.env.GITHUB_SHA, deployed_at: new Date().toISOString(), expires_in: '7 days', sample_data_only: true};
+          fs.writeFileSync(process.env.RUNNER_TEMP + '/preview-status.json', JSON.stringify(status, null, 2) + '\n');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Isolated design preview\n\n${status.url}\n\nSample information only. Live hosting and databases unchanged. Expires in 7 days.\n`);
+          console.log('Preview:', status.url);
+          JS
+      - name: Record preview link on separate status branch
+        env:
+          STATUS_FILE: ${{ runner.temp }}/preview-status.json
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          BLOB=$(git hash-object -w "$STATUS_FILE")
+          TREE=$(printf '100644 blob %s\tpreview-status.json\n' "$BLOB" | git mktree)
+          PARENT=()
+          if git fetch origin refs/heads/design-preview-status; then
+            PARENT=(-p FETCH_HEAD)
+          fi
+          COMMIT=$(printf 'Record isolated design preview URL\n' | git commit-tree "$TREE" "${PARENT[@]}")
+          git push origin "$COMMIT:refs/heads/design-preview-status"
