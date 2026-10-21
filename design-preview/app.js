@@ -42,39 +42,6 @@ function renderPrayers() {
     star.classList.toggle('unfilled', i >= count);
   });
 }
-function patPet(message) {
-  const speech = document.getElementById('pet-speech');
-  const pet = document.getElementById('pet-button');
-  speech.textContent = message;
-  clearTimeout(speechTimer);
-  speechTimer = setTimeout(() => {speech.textContent = 'A little hello makes my day ♡';}, 3500);
-  pet.classList.remove('patted');
-  void pet.offsetWidth;
-  pet.classList.add('patted');
-  clearTimeout(happyTimer);
-  happyTimer = setTimeout(() => pet.classList.remove('patted'), 750);
-  if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    const hearts = document.getElementById('pet-hearts');
-    for (let i = 0; i < 4; i++) {
-      const heart = document.createElement('span');
-      heart.className = 'floating-heart'; heart.textContent = '♡';
-      heart.style.setProperty('--drift', `${(i - 1.5) * 28}px`);
-      heart.style.animationDelay = `${i * .08}s`;
-      hearts.append(heart);
-      setTimeout(() => heart.remove(), 2000);
-    }
-  }
-}
-const lines = ['You make my day brighter ♡', 'A little pat, a lot of love!', 'So happy you’re here!', 'My favourite part of the day ♡'];
-let pats = 0, food = 12;
-document.getElementById('pet-button').addEventListener('click', () => patPet(lines[pats++ % lines.length]));
-document.getElementById('feed-button').addEventListener('click', () => {
-  if (food < 20) food++;
-  document.getElementById('food-label').textContent = `${food} / 20`;
-  document.getElementById('food-bar').style.width = `${food * 5}%`;
-  patPet(food === 20 ? 'A full tummy and a happy heart ♡' : 'Thank you for my little treat!');
-  toast('Demo treat only. Real pet progress is unchanged.');
-});
 document.getElementById('cheer-button').addEventListener('click', () => toast('A little sunshine! ☀ Demo only — no message was sent.'));
 document.querySelectorAll('.bottom-nav a').forEach(link => link.addEventListener('click', () => {
   document.querySelectorAll('.bottom-nav a').forEach(other => {

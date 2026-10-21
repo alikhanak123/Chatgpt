@@ -2,7 +2,26 @@
   "hosting": {
     "site": "prayertracker",
     "public": ".",
-    "ignore": ["firebase.json", "README.md", ".*", "**/.*"],
-    "headers": [{"source": "**", "headers": [{"key": "Cache-Control", "value": "no-cache"}, {"key": "Content-Security-Policy", "value": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"}]}]
+    "ignore": [
+      "firebase.json",
+      "README.md",
+      ".*",
+      "**/.*"
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          },
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self' 'sha256-gh7NRJ7MEWdYUGMcXx0SUMJY93gUi2UqlztG1amlvwA='; connect-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'"
+          }
+        ]
+      }
+    ]
   }
 }
