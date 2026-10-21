@@ -112,51 +112,36 @@ The **admin page** is at `/admin`: it shows all kids and activity and holds the 
 - Syntax check for a module: `node --check public/pet3d.js`. For `index.html`, copy the `<script type="module">` contents into a `.mjs` file and run `node --check` on it.
 - Test on a phone-sized screen. Most kids use phones.
 
-## 8. Publishing to Firebase
+## 8. Publishing to Firebase: NOT done by ChatGPT
 
-### Option A: automatic (recommended)
-`.github/workflows/deploy.yml` deploys every push to the `main` branch. You can also run it by hand from the GitHub **Actions** tab ("Deploy to Firebase" → Run workflow).
+**The owner has decided that only Claude Code, on the owner's computer, publishes the live site.**
+ChatGPT (or any other assistant working from GitHub) must **not** deploy, must not add deploy workflows or
+GitHub Actions, and must not ask the owner for Firebase keys or service-account files.
 
-On a push it deploys:
-- Hosting for **both** sites (`prayertracker` and the `kids-salah-tracker` redirect), every time
-- Firestore rules and indexes, only when `firestore.rules` or `firestore.indexes.json` changed in that push
-- Realtime Database rules, only when `database.rules.json` changed in that push
+What ChatGPT should do instead:
+1. Make the change and check it (section 7).
+2. Push it to GitHub (a branch or `main`), with a clear description of what changed.
+3. Tell the owner the change is ready. The owner will ask Claude Code to review and publish it.
 
-When you run it by hand you can type a target, e.g. `hosting,firestore,database`.
-
-It needs the repository secret `FIREBASE_SERVICE_ACCOUNT` (setup in section 9). Until that secret exists, the workflow stops with a clear error and changes nothing. If deploying the rules fails with a permission error, give the service account the roles "Firebase Rules Admin" and "Firebase Realtime Database Admin" in Google Cloud IAM.
-
-How to ship a change:
-1. Make the change on a branch.
-2. Check it.
-3. Merge or push to `main`.
-4. Watch the Actions tab until it's green.
-5. Check https://prayertracker.web.app (hard refresh; html/js are served no-cache).
-
-### Option B: from a computer that is logged in to Firebase
+For reference only (Claude Code runs this on the owner's computer, which is logged in to Firebase):
 ```bash
 npx -y firebase-tools@latest deploy --only hosting:prayertracker --non-interactive
 ```
-Add `,firestore:rules,database` to also publish the rules.
+Add `,firestore:rules,database` only when the rules files changed.
+
+Before every publish, Claude Code backs up all kids' data to `salah-backups<date>` (outside this repo) and
+checks afterwards that no progress changed. Kids' progress (ticks, streaks, badges, pets, scores) must never be lost.
 
 ### Rolling back
-- **Hosting:** Firebase console → Hosting → prayertracker → release history → roll back.
-- **Code:** `git revert` the bad commit and push to `main`. That redeploys the previous version.
+- Hosting: Firebase console → Hosting → prayertracker → release history → roll back.
 
-## 9. One-time setup for automatic publishing (the owner does this)
-
-1. Open https://console.firebase.google.com/project/family-salah-tracker-765ed/settings/serviceaccounts/adminsdk.
-2. Click **Generate new private key**. A `.json` file downloads.
-   - Keep it secret.
-   - Never put it in the repo or paste it into a chat.
-3. In GitHub, open the repo **Settings → Secrets and variables → Actions → New repository secret**.
-   - Name: `FIREBASE_SERVICE_ACCOUNT`
-   - Value: paste the **entire contents** of the downloaded `.json` file.
-4. Delete the downloaded file from your computer.
-5. In GitHub **Actions**, run "Deploy to Firebase" once to check it works.
+## 9. Kids' data is precious
+The kids' streaks, badges, pets and scores are what keeps them praying and coming back. Never rename or remove
+data fields, never reset or "clean up" data, and keep reading old data formats (e.g. `checked[DD] === true`,
+old pet types via `petType()`). A design change must not change what is saved.
 
 ## 10. History / where things stand
-- Built and maintained with Claude Code until October 2026; the source moved to GitHub on 2026-10-21.
+- Built and maintained with Claude Code; the source moved to GitHub on 2026-10-21. Claude Code publishes the live site.
 - Recent work:
   - realistic 3D pets (rigged GLB models, matte lighting);
   - the cat got eyes and a walk cycle;
