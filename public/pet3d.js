@@ -170,7 +170,16 @@ async function start(api, opts){
     parts.stars = [];
     for (let k = 0; k < 3; k++){ const st = new THREE.Mesh(new THREE.OctahedronGeometry(.07), toon("#FFD166", {emissive:"#FFB020", emissiveIntensity:.6})); scene.add(st); parts.stars.push(st); }
   }
-  const S = {x:0, z:0, ry:.6, rest:.6, tx:0, tz:0, walking:false, wait:1.5, v:0, extraT:6 + Math.random()*6, happyT:0};
+  const S = {x:0, z:0, ry:.6, rest:.6, tx:0, tz:0, walking:false, wait:1.5, v:0, extraT:6 + Math.random()*6, happyT:0, look:0, lookT:3, yaw:0};
+  // Looking at the child: animals without their own head animation (all but the cat and parrot) turn their head
+  // towards the camera now and then while standing, and always right after being patted.
+  const lookHead = !isPlant && !opts.small && head && !anim?.procWalk ? head : null, headRest = lookHead?.quaternion.clone();
+  const qp = new THREE.Quaternion(), qh = new THREE.Quaternion(), qa = new THREE.Quaternion(), ax = new THREE.Vector3(), tv = new THREE.Vector3(), UP = new THREE.Vector3(0, 1, 0);
+  const turnBone = (bone, axis, angle) => {        // rotate a bone around a holder-space axis, after the clip has posed it
+    bone.parent.getWorldQuaternion(qp); holder.getWorldQuaternion(qh);
+    ax.copy(axis).applyQuaternion(qh).applyQuaternion(qp.invert()).normalize();
+    bone.quaternion.premultiply(qa.setFromAxisAngle(ax, angle));
+  };
   const play = (name, fade = .35) => {
     const a = actions[name] || actions.idle; if (!a || a === current) return;
     a.reset().setEffectiveWeight(1).fadeIn(fade).play();
@@ -191,7 +200,7 @@ async function start(api, opts){
   const ease = (cur, target, k, dt) => cur + (target - cur) * (1 - Math.exp(-k*dt));
   const onTap = () => {
     if (opts.small) return;
-    S.walking = false; S.v = 0; S.wait = 2.5; S.happyT = anim?.procHappy ? 3 : 1.2;
+    S.walking = false; S.v = 0; S.wait = 2.5; S.happyT = anim?.procHappy ? 3 : 1.2; S.lookT = -2.5;   // look up at the child
     if (actions.happy && api.mood !== "sleepy"){ current?.fadeOut(.2); current = null; play("happy", .2); }
     const rect = el.getBoundingClientRect(), v = new THREE.Vector3(S.x, isPlant ? 1.4 : 1.1, S.z).project(camera);
     opts.onPet?.({x:(v.x*.5 + .5) * rect.width, y:(-v.y*.5 + .5) * rect.height});
@@ -230,7 +239,20 @@ async function start(api, opts){
     if (!isPlant && !actions.happy && !anim?.procHappy) S.hopY = S.happyT > 0 ? Math.sin((1.2 - S.happyT) / 1.2 * Math.PI) * .18 : 0;
     holder.position.set(S.x, (S.hopY || 0) + (anim?.bob?.() || 0), S.z); holder.rotation.y = S.ry;
     anim?.reset?.();
+    if (lookHead) lookHead.quaternion.copy(headRest);      // clips that don't move the head would otherwise add up our turns
     if (mixer) mixer.update(dt);
+    if (lookHead){
+      // glance: every 5-9 s look for ~2.5 s (negative lookT = looking); never while walking or asleep
+      S.lookT -= dt; if (S.lookT < -2.6) S.lookT = 5 + Math.random() * 4;
+      const want = !S.walking && !sleepy && S.lookT < 0 ? 1 : 0;
+      S.look += (want - S.look) * (1 - Math.exp(-3 * dt));
+      if (S.look > .01){
+        holder.updateMatrixWorld(true);
+        lookHead.getWorldPosition(tv); tv.subVectors(camera.position, tv).applyQuaternion(holder.getWorldQuaternion(qh).invert());
+        S.yaw += (Math.max(-.8, Math.min(.8, Math.atan2(tv.x, tv.z))) - S.yaw) * (1 - Math.exp(-4 * dt));
+        turnBone(lookHead, UP, S.yaw * S.look);
+      }
+    }
     anim?.update(dt, t, {walking:S.walking, speed:cfg.speed ? Math.min(1, S.v / cfg.speed) : 0, speedRaw:S.v, happy:S.happyT, sleepy});
     if (S.happyT > 0) S.happyT -= dt;
     if (parts.topper){ scene.updateMatrixWorld(); const hp = parts.head.getWorldPosition(new THREE.Vector3()); parts.topper.position.set(hp.x, hp.y + parts.headH * .14, hp.z); parts.topper.rotation.y = S.ry; }
