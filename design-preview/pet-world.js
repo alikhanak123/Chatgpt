@@ -1,3 +1,4 @@
+import {createPonyCharacter} from './pony-character.js';
 import * as T from 'three';
 import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
 import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
@@ -8,7 +9,7 @@ const status = document.getElementById('world-status');
 const say = text => {document.getElementById('pet-speech').textContent = text;};
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const configs = {
- pony:{file:'pony.glb',name:'Twinkle',h:1.65,walk:'WalkSlow',idle:'Idle',speed:.5,colors:{'Material.003':'#cb955c','Material.006':'#634779'}},
+ pony:{file:'pony.glb',name:'Peaches',h:1.65,walk:'WalkSlow',idle:'Idle',speed:.5,colors:{'Material.003':'#cb955c','Material.006':'#634779'}},
  dog:{file:'dog.glb',name:'Biscuit',h:.95,walk:'Walk',idle:'Idle',eat:'Eating',speed:.52,colors:{Main:'#d99953',Main_Light:'#fff0d2'}},
  fox:{file:'fox.glb',name:'Maple',h:1.02,walk:'Walk',idle:'Idle',eat:'Eating',speed:.55,colors:{Main:'#ef9645',Main_Light:'#fff0dc',Grey:'#57424c'}},
  rabbit:{file:'rabbit.glb',name:'Mochi',h:.86,walk:'Bunny_walk',idle:'Bunny_idle',speed:.38,colors:{Fur:'#e0c0a7',Fur_white:'#fff0de'}}
@@ -55,7 +56,7 @@ const bowl=mesh(new T.TorusGeometry(.19,.05,12,32),'#b995eb',1.45,.14,.6);bowl.r
 const clouds=[];for(const [x,y,z,s] of [[-3.5,3,-3,.6],[3,3.5,-4,.7],[0,4,-5,.5]]){const cloud=new T.Group();cloud.add(ball('#ffffff',0,0,0,s,s*.4,s*.35));cloud.add(ball('#ffffff',-.4*s,.14*s,0,s*.6,s*.45,s*.35));cloud.add(ball('#ffffff',.35*s,.16*s,0,s*.65,s*.5,s*.35));cloud.position.set(x,y,z);scene.add(cloud);clouds.push(cloud);}
 const orb=ball('#ffdc83',-2.9,3,-5,.5);orb.material=new T.MeshBasicMaterial({color:'#ffe39e'});scene.add(orb);
 const butterfly=new T.Group();const wing1=ball('#c4a2ff',.08,0,0,.11,.025,.16),wing2=ball('#ffb9d2',-.08,0,0,.11,.025,.16);butterfly.add(wing1,wing2);scene.add(butterfly);
-let model,holder=new T.Group(),mixer,actions={},current,head,headBase,ready=false,loading=0,currentType='pony';scene.add(holder);
+let character=null,model,holder=new T.Group(),mixer,actions={},current,head,headBase,ready=false,loading=0,currentType='pony';scene.add(holder);
 const s={x:0,z:0,yaw:-.6,tx:0,tz:0,walking:false,wait:1.5,paused:reduced,treat:0,hello:0,clip:'',distance:0};
 const loader=new GLTFLoader();
 function play(name,fade=.3){const a=actions[name]||actions.idle;if(!a||a===current)return;current?.fadeOut(fade);a.reset().setEffectiveTimeScale(1).setEffectiveWeight(1).fadeIn(fade).play();current=a;s.clip=name;}
@@ -70,10 +71,11 @@ async function selectPet(type){const ticket=++loading;ready=false;status.hidden=
  });
  mixer=new T.AnimationMixer(model);for(const [kind,name] of Object.entries({idle:cfg.idle,walk:cfg.walk,eat:cfg.eat})){const clip=gltf.animations.find(a=>a.name.split('|').pop()===name);if(clip)actions[kind]=mixer.clipAction(clip);}
  actions.idle?.play();mixer.update(0);model.updateMatrixWorld(true);const box=new T.Box3().setFromObject(model,true);const scale=cfg.h/box.getSize(new T.Vector3()).y;model.scale.multiplyScalar(scale);model.updateMatrixWorld(true);const b=new T.Box3().setFromObject(model,true);const c=b.getCenter(new T.Vector3());model.position.set(-c.x,-b.min.y,-c.z);model.updateMatrixWorld(true);
+ character = type === 'pony' ? createPonyCharacter(model,scene) : null;
  let face=0;if(head){const hp=head.getWorldPosition(new T.Vector3());if(Math.hypot(hp.x,hp.z)>.12)face=Math.atan2(hp.x,hp.z);}
  const turn=new T.Group();turn.rotation.y=-face;turn.add(model);holder.clear();holder.add(turn);model=turn;
  headBase=head?.quaternion.clone();s.x=0;s.z=0;s.yaw=-.6;s.walking=false;s.wait=1.4;s.treat=0;s.hello=0;current=null;play('idle',0);ready=true;status.hidden=true;
- document.getElementById('pet-name').textContent=cfg.name;document.getElementById('pet-kind').textContent=type==='pony'?'Your 3D pony pal':'Your 3D '+type+' pal';say(reduced?'Ready when you are! Use the walk button.':'I’m real 3D! Watch me explore ✨');
+ document.getElementById('pet-name').textContent=cfg.name;document.getElementById('pet-kind').textContent=type==='pony'?'Loves carrots & little adventures':'Always ready for a little adventure';document.getElementById('garden-title').textContent=cfg.name+'’s meadow';say(reduced?'Ready when you are! Use the walk button.':'Hi, Explorer! Come play with me 💛');
  }catch(e){status.hidden=false;status.textContent='The 3D buddy could not load. Please refresh to try again.';console.error(e);}}
 function target(x,z){const r=Math.hypot(x,z);if(r>1.35){x=x/r*1.35;z=z/r*1.35;}s.tx=x;s.tz=z;s.walking=true;s.treat=0;s.hello=0;play('walk');}
 function randomTarget(){let x,z;do{x=(Math.random()-.5)*2.4;z=(Math.random()-.5)*1.9;}while(Math.hypot(x-s.x,z-s.z)<.55);target(x,z);}
@@ -98,6 +100,7 @@ function tick(now){requestAnimationFrame(tick);const dt=Math.min((now-last)/1000
   else if(s.walking){const dx=s.tx-s.x,dz=s.tz-s.z,d=Math.hypot(dx,dz),angle=Math.atan2(dx,dz);let diff=Math.atan2(Math.sin(angle-s.yaw),Math.cos(angle-s.yaw));s.yaw+=Math.max(-dt*2.4,Math.min(dt*2.4,diff));const step=Math.min(d,configs[currentType].speed*dt*(Math.abs(diff)<.7?1:.2));if(d>0){s.x+=dx/d*step;s.z+=dz/d*step;s.distance+=step;}
    if(d<.06){s.walking=false;s.wait=1.5+Math.random()*1.8;play('idle');}}
   else if(!s.paused){s.wait-=dt;if(s.wait<=0)randomTarget();}
+  character?.update(elapsed,s.hello>0);
   holder.position.set(s.x,.075,s.z);holder.rotation.y=s.yaw;contact.position.set(s.x,.07,s.z);
  }
  if(!reduced){butterfly.position.set(Math.cos(elapsed*.4)*1.8,.7+Math.sin(elapsed*1.5)*.15,Math.sin(elapsed*.4)*1.5);butterfly.rotation.y=-elapsed*.4;wing1.rotation.z=Math.sin(elapsed*13)*.7;wing2.rotation.z=-Math.sin(elapsed*13)*.7;}
@@ -105,4 +108,4 @@ function tick(now){requestAnimationFrame(tick);const dt=Math.min((now-last)/1000
 }
 requestAnimationFrame(tick);selectPet('pony');
 // Read-only diagnostics for smoke tests; contains only fictional demo state.
-window.petPreview={get state(){return {ready,type:currentType,walking:s.walking,x:s.x,z:s.z,clip:s.clip,distance:s.distance,frames,animations:Object.keys(actions),bone:head?head.quaternion.toArray():null,canvas:!!renderer.domElement,renderer:renderer.info.render.calls};}};
+window.petPreview={get state(){return {ready,type:currentType,walking:s.walking,x:s.x,z:s.z,clip:s.clip,distance:s.distance,frames,animations:Object.keys(actions),bone:head?head.quaternion.toArray():null,canvas:!!renderer.domElement,renderer:renderer.info.render.calls,eyes:character?.eyes.length||0};}};

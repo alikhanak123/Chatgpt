@@ -1,11 +1,11 @@
 'use strict';
 // Demo-only state. No Firebase, network calls, storage, or real user information.
 const prayers = [
-  {name:'Fajr', scene:'fajr', description:'A peaceful beginning', done:true},
-  {name:'Dhuhr', scene:'dhuhr', description:'A moment in the sunshine', done:true},
-  {name:'Asr', scene:'asr', description:'A little afternoon pause', done:false},
-  {name:'Maghrib', scene:'maghrib', description:'As the sky turns golden', done:false},
-  {name:'Isha', scene:'isha', description:'End your day with peace', done:false}
+  {name:'Fajr', scene:'fajr', description:'Early morning', done:true},
+  {name:'Dhuhr', scene:'dhuhr', description:'Midday', done:true},
+  {name:'Asr', scene:'asr', description:'Afternoon', done:false},
+  {name:'Maghrib', scene:'maghrib', description:'Sunset', done:false},
+  {name:'Isha', scene:'isha', description:'Night', done:false}
 ];
 let toastTimer, speechTimer, happyTimer;
 const toast = message => {
@@ -21,7 +21,7 @@ function renderPrayers() {
   prayers.forEach((prayer, index) => {
     const row = document.createElement('div');
     row.className = `prayer-row${prayer.done ? ' done' : ''}`;
-    row.innerHTML = `<div class="prayer-scene scene-${prayer.scene}" aria-hidden="true"><span class="scene-tower"></span></div><div class="prayer-name"><strong>${prayer.name}</strong><small>${prayer.description}</small><span class="prayer-status">${prayer.done ? 'Lovely effort · completed' : 'A new chance to grow'}</span></div><button class="prayer-check" type="button" aria-pressed="${prayer.done}" aria-label="${prayer.name}: ${prayer.done ? 'completed, undo sample tick' : 'mark complete in demo'}">✓</button>`;
+    row.innerHTML = `<div class="prayer-scene scene-${prayer.scene}" aria-hidden="true"><span class="scene-tower"></span></div><div class="prayer-name"><strong>${prayer.name}</strong><small>${prayer.description}</small><span class="prayer-status">${prayer.done ? 'Completed' : ''}</span></div><button class="prayer-check" type="button" aria-pressed="${prayer.done}" aria-label="${prayer.name}: ${prayer.done ? 'completed, undo sample tick' : 'mark complete in demo'}">✓</button>`;
     row.querySelector('button').addEventListener('click', () => {
       const hadFocus = document.activeElement === row.querySelector('button');
       prayer.done = !prayer.done;

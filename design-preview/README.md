@@ -2,7 +2,7 @@
 
 A separate visual demo for children under 14. Uses fictional, memory-only prayer progress. No Firebase SDK, authentication, database access, credentials, message delivery, or saved progress. Nothing here is imported into the live application.
 
-The pet world uses actual rigged GLB models and skeletal walk/idle animations from the existing app. Pony, puppy, fox, and bunny can be selected. Pets explore the 3D garden autonomously; tap the ground to guide them, drag horizontally to rotate the camera, or use Walk, Snack, and Hello. The three-dimensional environment, materials, lighting, shadows, and UI are independent preview code.
+Peaches now has a new rounded character sculpt, including blinking eyes, attached to the original CC0 horse skeleton. The original horse mesh is hidden; its actual walk/idle animation still drives the new geometry. Other preview animals retain their existing GLB models. Pony, puppy, fox, and bunny can be selected. Pets explore the 3D garden autonomously; tap the ground to guide them, drag horizontally to rotate the camera, or use Walk, Snack, and Hello. The three-dimensional environment, character sculpt, materials, lighting, shadows, and UI are independent preview code. See DESIGN-SOURCES.md for the design skill and asset research.
 
 All runtime assets are hosted locally, including the pinned Three.js 0.160.0 library. See vendor/three/LICENSE and models/CREDITS.txt for third-party licensing. Bunny credit is also visible in the UI. CSP allows only same-origin asset requests; no remote APIs are used. Automatic wandering is paused for reduced-motion preference until the user explicitly requests a walk.
 
