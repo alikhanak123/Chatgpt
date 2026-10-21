@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    // Admin logins (created on /admin). Add the admin's uid here and redeploy to activate it.
+    // obaid123 = admin
+    function isAdmin() { return signedIn() && request.auth.uid in ['AUccw2YJEJdaPJd4Bas2fNrPqWs2']; }
+    // Grown-up login: a child's profile names its grown-up login in "parent" (set by the child's own login).
+    // That login may look after this one child only.
+    function isParentOf(kid) {
+      return signedIn() && get(/databases/$(database)/documents/users/$(kid)).data.get('parent', '') == request.auth.uid;
+    }
+
+    // Kid profiles: any signed-in kid can open a profile they have the id for
+    // (needed to show buddies' names and pictures). Only the admin can list everyone.
+    match /users/{uid} {
+      function onlyFriendsChanged() {
+        return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['friends']);
+      }
+      // Becoming Salah Buddies: you may add only yourself to someone's list...
+      function joining() {
+        return onlyFriendsChanged()
+          && request.resource.data.friends.toSet() == resource.data.get('friends', []).toSet().union([request.auth.uid].toSet());
+      }
+      // ...and remove only yourself.
+      function leaving() {
+        return onlyFriendsChanged()
+          && request.resource.data.friends.toSet() == resource.data.get('friends', []).toSet().difference([request.auth.uid].toSet());
+      }
+      allow get: if signedIn();
+      allow list: if isAdmin();
+      allow create: if signedIn() && request.auth.uid == uid;
+      // The grown-up may update the profile (message, name, city) but can't move the link to another login.
+      allow update: if signedIn() && (request.auth.uid == uid || joining() || leaving() || isAdmin()
+        || (resource.data.get('parent', '') == request.auth.uid && request.resource.data.get('parent', '') == request.auth.uid));
+      allow delete: if signedIn() && (request.auth.uid == uid || isAdmin());
+
+      // Grown-up PIN lives here; only the kid's own login (or the admin) can read it.
+      match /private/{docId} {
+        allow read, write: if signedIn() && (request.auth.uid == uid || isAdmin() || isParentOf(uid));
+      }
+    }
+
+    // Prayer ticks: one doc per kid per month, id "<uid>_<YYYY-MM>".
+    // The kid writes their own; buddies (friends) and the admin can read them.
+    match /marks/{id} {
+      allow get: if signedIn() && (
+        resource == null
+        || resource.data.uid == request.auth.uid
+        || isAdmin()
+        || isParentOf(resource.data.uid)
+        || request.auth.uid in get(/databases/$(database)/documents/users/$(resource.data.uid)).data.get('friends', [])
+      );
+      allow list: if signedIn() && (isAdmin() || resource.data.uid == request.auth.uid);
+      allow create, update: if signedIn()
+        && (request.resource.data.uid == request.auth.uid || isParentOf(request.resource.data.uid))
+        && id.split('_')[0] == request.resource.data.uid;
+      allow delete: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+    }
+
+    // All-kids ranking: numbers only (no names). Everyone signed in can count; each kid writes their own.
+    match /leaderboard/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && (request.auth.uid == uid || isParentOf(uid))
+        && request.resource.data.keys().hasOnly(["wk","w","wb","mk","m","mb","t"]);
+      allow delete: if isAdmin();
+    }
+
+    // App settings (e.g. requireConfirm). Everyone reads; only the admin changes them.
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Activity trail for the admin page: kids add their own entries; only the admin reads them.
+    match /activity/{id} {
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid
+        && request.resource.data.keys().hasOnly(["uid","type","t","p","s"]);
+      allow read, delete: if isAdmin();
+    }
+  }
+}

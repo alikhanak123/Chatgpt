@@ -1,0 +1,9 @@
+{
+  "indexes": [
+    { "collectionGroup": "leaderboard", "queryScope": "COLLECTION",
+      "fields": [ { "fieldPath": "wk", "order": "ASCENDING" }, { "fieldPath": "w", "order": "ASCENDING" } ] },
+    { "collectionGroup": "leaderboard", "queryScope": "COLLECTION",
+      "fields": [ { "fieldPath": "mk", "order": "ASCENDING" }, { "fieldPath": "m", "order": "ASCENDING" } ] }
+  ],
+  "fieldOverrides": []
+}

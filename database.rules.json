@@ -1,0 +1,33 @@
+{
+  "rules": {
+    "inbox": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        "$gid": {
+          ".write": "auth != null && (auth.uid === $uid || newData.child('other').val() === auth.uid || data.child('other').val() === auth.uid)"
+        }
+      }
+    },
+    "games": {
+      "$gid": {
+        ".read": "auth != null && (data.child('p1').val() === auth.uid || data.child('p2').val() === auth.uid || data.child('pl').child(auth.uid).exists())",
+        ".write": "auth != null && (data.exists() ? (data.child('p1').val() === auth.uid || data.child('p2').val() === auth.uid || data.child('pl').child(auth.uid).exists()) : newData.child('p1').val() === auth.uid)"
+      }
+    },
+    "live": {
+      "$gid": {
+        ".read": "auth != null && (root.child('games').child($gid).child('p1').val() === auth.uid || root.child('games').child($gid).child('p2').val() === auth.uid)",
+        ".write": "auth != null && (root.child('games').child($gid).child('p1').val() === auth.uid || root.child('games').child($gid).child('p2').val() === auth.uid)"
+      }
+    },
+    "nudges": {
+      "$to": {
+        ".read": "auth != null && auth.uid === $to",
+        "$id": {
+          ".write": "auth != null && ((!data.exists() && newData.child('from').val() === auth.uid) || auth.uid === $to)",
+          ".validate": "!newData.exists() || (newData.hasChildren(['from','k','t']) && newData.child('k').isString() && newData.child('k').val().length < 20)"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+# Firebase deploy cache and logs
+.firebase/
+*-debug.log
+firebase-debug*.log
+# Secrets and credentials (never commit)
+.env
+.env.*
+*serviceAccount*.json
+*service-account*.json
+*.pem
+*.key
+# Dependencies and build caches
+node_modules/
+.cache/
+dist/
+# OS / editor files
+.DS_Store
+Thumbs.db
+desktop.ini

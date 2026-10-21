@@ -1,0 +1,1862 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Salah Tracker</title>
+<meta name="description" content="Tick off your five daily prayers, collect stars and badges, and cheer on your Salah Buddies.">
+<meta name="theme-color" content="#FF8DB4">
+<link rel="manifest" href="/manifest.json">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<link rel="icon" href="/img/p-isha.png">
+<link rel="apple-touch-icon" href="/img/p-isha.png">
+<meta property="og:title" content="Salah Tracker">
+<meta property="og:description" content="Be my Salah Buddy! Let's remind each other to pray and collect stars.">
+<meta property="og:image" content="/img/p-isha.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@600;700;800;900&family=Amiri:wght@400;700&display=swap">
+<style>
+/* Layout: sunny banner, then one column of chunky "toy" cards — sign-in card, or the kid's day (5 prayer cards), race board, scores, badges, calendar, months. */
+:root{
+  --bg:#F2F7FF; --surface:#FFFFFF; --surface-2:#F3F0FF; --ink:#2A2147; --muted:#6F6894; --line:#E2DCF7;
+  --accent:#FF5C8A; --accent-dk:#D93D6C; --accent-ink:#FFFFFF; --sun:#FFC23C; --sky:#3E9BFF; --grape:#7C5CFF; --grape-dk:#5B3BE0;
+  --ok:#17A35F; --ok-dk:#0E7D47; --ok-bg:#DCF7E9; --late:#E08A00; --late-bg:#FFF0D2; --miss:#EB4760; --miss-bg:#FFE1E6; --exc:#8A82B4; --exc-bg:#ECE9F8;
+  --wa:#25D366; --wa-dk:#1A9E4B;
+  --none:#DCD7EE; --hero-a:#FFCF5C; --hero-b:#FF8DB4; --hero-c:#B69CFF; --hero-ink:#3A1840;
+  --shadow:0 10px 24px -14px rgba(60,40,120,.35), 0 2px 0 rgba(60,40,120,.06);
+  --f-display:"Fredoka", "Trebuchet MS", system-ui, sans-serif;
+  --f-body:"Nunito", "Segoe UI", system-ui, sans-serif;
+  --r:26px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#141129; --surface:#1F1B3D; --surface-2:#2A2550; --ink:#F4F1FF; --muted:#ABA4D8; --line:#38316A;
+  --accent:#FF7FA3; --accent-dk:#D9557C; --accent-ink:#2B0B18; --sun:#FFD166; --sky:#7CC0FF; --grape:#A58FFF; --grape-dk:#7D63E6;
+  --ok:#47D693; --ok-dk:#23A86A; --ok-bg:#163A2E; --late:#FFB84D; --late-bg:#3E3018; --miss:#FF7A8C; --miss-bg:#45202C; --exc:#B3ACDA; --exc-bg:#2E2A4D;
+  --none:#3B3569; --hero-a:#3B2C8A; --hero-b:#6B3FA0; --hero-c:#22356E; --hero-ink:#FFF6E0;
+  --shadow:0 10px 24px -12px rgba(0,0,0,.6); color-scheme:dark }}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;font-weight:700;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.wrap{max-width:800px;margin:0 auto;padding-inline:16px;padding-block:16px 96px;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--f-display);line-height:1.1;margin:0;text-wrap:balance;font-weight:700}
+h2{font-size:1.5rem}
+p{margin:0}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:inherit}
+button:focus-visible,input:focus-visible,a:focus-visible{outline:3px solid var(--grape);outline-offset:2px}
+img{user-select:none;-webkit-user-drag:none;max-width:100%}
+[hidden]{display:none!important}
+.muted{color:var(--muted)}
+.small{font-size:.86rem}
+.num{font-variant-numeric:tabular-nums}
+.eyebrow{font-size:.74rem;font-weight:900;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:16px}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ic{width:1.6em;height:1.6em;vertical-align:-.45em}
+.sec-title{display:flex;align-items:center;gap:10px}
+.sec-title img{width:40px;height:40px;flex:none}
+
+/* banner */
+.hero{position:relative;overflow:hidden;border-radius:30px;padding:22px 22px 20px;color:var(--hero-ink);
+  background:linear-gradient(120deg,var(--hero-a),var(--hero-b) 55%,var(--hero-c));box-shadow:var(--shadow)}
+.hero h1{font-size:clamp(1.8rem,5.5vw,2.6rem);letter-spacing:-.01em}
+.hero .tag{font-weight:800;opacity:.85;margin-top:2px}
+.hero .dates{margin-top:12px;display:inline-flex;gap:8px;flex-wrap:wrap}
+.hero .pill{background:rgba(255,255,255,.35);border-radius:99px;padding:3px 12px;font-size:.85rem;font-weight:800}
+.hero .float{position:absolute;pointer-events:none;animation:float 5s ease-in-out infinite}
+.hero .f1{right:18px;top:12px;width:86px}
+.hero .f2{right:110px;top:56px;width:40px;animation-delay:-1.5s}
+.hero .f3{right:24px;bottom:8px;width:44px;animation-delay:-3s}
+.hero > div{position:relative;max-width:calc(100% - 120px)}
+@media (max-width:480px){.hero .f1{width:64px}.hero .f2{right:76px;top:auto;bottom:10px;width:30px}.hero .f3{display:none}.hero > div{max-width:calc(100% - 70px)}}
+@keyframes float{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-8px) rotate(4deg)}}
+
+.panel{background:var(--surface);border-radius:var(--r);padding:20px;box-shadow:var(--shadow)}
+.note{background:var(--surface-2);border-radius:16px;padding:10px 14px;font-size:.92rem}
+
+/* buttons */
+.btn{border:none;border-radius:16px;padding:11px 18px;font-weight:900;transition:transform .08s, box-shadow .08s;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none}
+.btn:active{transform:translateY(3px)}
+.btn img{width:24px;height:24px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);box-shadow:0 4px 0 var(--accent-dk)}
+.btn.primary:active{box-shadow:0 1px 0 var(--accent-dk)}
+.btn.approve{background:var(--ok);color:#fff;box-shadow:0 4px 0 var(--ok-dk)}
+.btn.approve:active{box-shadow:0 1px 0 var(--ok-dk)}
+.btn.wa{background:var(--wa);color:#fff;box-shadow:0 4px 0 var(--wa-dk)}
+.btn.ghost{background:var(--surface-2);box-shadow:0 3px 0 var(--line)}
+.btn.danger{background:var(--miss);color:#fff}
+.btn.sm{padding:6px 13px;font-size:.88rem}
+.btn.block{width:100%}
+.btn:disabled{opacity:.6;cursor:default}
+.linkbtn{background:none;border:none;color:var(--muted);text-decoration:underline;font-size:.86rem;padding:4px;font-weight:800}
+
+/* avatars */
+.avatar{border-radius:50%;flex:none;display:grid;place-items:center;position:relative;
+  background:radial-gradient(circle at 35% 30%, #fff 0, var(--av-bg, #FFE3EE) 70%);box-shadow:inset 0 -4px 0 rgba(0,0,0,.06), 0 0 0 3px var(--surface)}
+.avatar img{width:74%;height:74%;object-fit:contain;filter:drop-shadow(0 3px 3px rgba(0,0,0,.18))}
+.av-48{width:48px;height:48px}.av-110{width:110px;height:110px}.av-88{width:88px;height:88px}
+.av-btn{border:none;background:none;padding:0;border-radius:50%;position:relative}
+.av-btn .edit{position:absolute;right:0;bottom:2px;background:var(--grape);color:#fff;border-radius:99px;font-size:.66rem;font-weight:900;padding:2px 8px;box-shadow:0 2px 0 var(--grape-dk)}
+
+/* sign-in */
+.auth{max-width:460px;margin:0 auto;width:100%}
+.how-step{display:grid;grid-template-columns:56px minmax(0,1fr);gap:14px;align-items:center}
+.how-step img{width:56px;height:56px;filter:drop-shadow(0 4px 4px rgba(0,0,0,.15))}
+.how-step b{font-family:var(--f-display);font-size:1.15rem;font-weight:600}
+
+/* games lobby */
+.game-pill{background:color-mix(in srgb, var(--sun) 35%, var(--surface));animation:nudge 1.6s ease-in-out infinite;margin-right:6px}
+@keyframes nudge{0%,100%{transform:none}50%{transform:scale(1.05)}}
+.game-pick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.gp{border:3px solid transparent;background:var(--surface-2);border-radius:18px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center}
+.gp img{width:46px;height:46px}
+.gp b{font-family:var(--f-display);font-weight:600;font-size:1rem;line-height:1.1}
+.gp span{font-size:.7rem;color:var(--muted);line-height:1.2}
+.gp[aria-pressed="true"]{border-color:var(--accent);background:var(--surface)}
+.friend-pick{display:flex;gap:8px;flex-wrap:wrap}
+.fp{border:3px solid transparent;background:var(--surface-2);border-radius:99px;padding:4px 14px 4px 4px;display:inline-flex;align-items:center;gap:8px;font-weight:900}
+.fp .avatar{width:40px;height:40px}
+.fp[aria-pressed="true"]{border-color:var(--accent);background:var(--surface)}
+.g-invite{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:18px;background:color-mix(in srgb, var(--sun) 25%, var(--surface));flex-wrap:wrap}
+.g-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:16px;background:var(--surface-2);flex-wrap:wrap}
+.g-ic{width:36px;height:36px}
+
+/* game screen */
+body.gaming{overflow:hidden}
+.game-screen{position:fixed;inset:0;z-index:15;background:var(--bg);overflow:auto;padding:calc(12px + env(safe-area-inset-top,0px)) 16px calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:14px}
+.game-screen > *{width:100%;max-width:520px}
+.gs-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.gs-title{display:flex;align-items:center;gap:8px;font-family:var(--f-display);font-weight:700;font-size:1.3rem}
+.gs-title img{width:34px;height:34px}
+.gs-players{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:center}
+.gs-player{display:flex;align-items:center;gap:10px;padding:8px 12px 8px 8px;border-radius:20px;background:var(--surface);box-shadow:var(--shadow);border:3px solid transparent;min-width:0}
+.gs-player b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gs-player.active{border-color:var(--ok)}
+.gs-score{font-family:var(--f-display);font-size:1.4rem;line-height:1}
+.gs-vs{font-family:var(--f-display);font-weight:700;color:var(--accent);font-size:1.2rem}
+.gs-status{text-align:center;font-family:var(--f-display);font-weight:600;font-size:1.3rem}
+.gs-status.go{color:var(--ok)}
+.ttt{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:360px!important;aspect-ratio:1}
+.ttt-cell{background:var(--surface);border:none;border-radius:20px;box-shadow:0 5px 0 var(--line);display:grid;place-items:center;padding:12%}
+.ttt-cell img{width:100%;height:100%;animation:pop .35s cubic-bezier(.2,1.6,.4,1)}
+.ttt-cell.win{background:var(--ok-bg);box-shadow:0 5px 0 var(--ok)}
+.ttt-cell:disabled{cursor:default}
+.c4-wrap{display:flex;flex-direction:column;gap:8px;align-items:center}
+.c4{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;background:var(--sky);padding:8px;border-radius:20px;width:100%;max-width:440px;box-shadow:0 6px 0 color-mix(in srgb, var(--sky) 60%, #000)}
+.c4-col{border:none;background:transparent;padding:0;display:grid;grid-template-rows:repeat(6,1fr);gap:4px;border-radius:12px}
+.c4-col:not(:disabled):hover{background:rgba(255,255,255,.18)}
+.c4-col:disabled{cursor:default}
+.c4-slot{aspect-ratio:1;border-radius:50%;background:var(--bg);display:grid;place-items:center;overflow:hidden}
+.c4-disc{width:100%;height:100%;animation:drop .35s cubic-bezier(.3,1.4,.5,1)}
+@keyframes drop{from{transform:translateY(-300%)}to{transform:none}}
+.hockey-wrap{display:flex;flex-direction:column;align-items:center;gap:8px}
+.hockey{touch-action:none;border-radius:22px;box-shadow:var(--shadow);background:var(--surface-2);max-width:100%}
+
+/* prayer times, rakats, approvals */
+.next-bar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:18px;background:color-mix(in srgb, var(--sky) 14%, var(--surface));flex-wrap:wrap}
+.next-bar img{width:40px;height:40px;flex:none}
+.next-bar b{font-family:var(--f-display);font-weight:600;font-size:1.05rem}
+.rk-chips{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+.rk{font-size:.7rem;font-weight:900;padding:2px 8px;border-radius:99px;white-space:nowrap}
+.rk-fard{background:var(--accent);color:#fff}
+.rk-wajib{background:var(--grape);color:#fff}
+.rk-sunnah{background:color-mix(in srgb, var(--sky) 22%, var(--surface));color:var(--sky)}
+.rk-opt{background:var(--surface);color:var(--muted);border:1.5px dashed var(--line)}
+.now-chip,.ok-chip{font-family:var(--f-body);font-size:.66rem;font-weight:900;padding:2px 8px;border-radius:99px;margin-left:8px;vertical-align:3px}
+.now-chip{background:var(--ok);color:#fff;animation:nudge 1.6s ease-in-out infinite;display:inline-block}
+.ok-chip{background:var(--ok-bg);color:var(--ok)}
+.prayer.is-now{border-color:var(--ok);border-style:dashed}
+.tick .opens{color:var(--muted);font-size:.66rem}
+.tick:disabled .opens{opacity:1}
+.bday-pill{background:color-mix(in srgb, var(--accent) 18%, var(--surface));margin-right:6px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.av-groups{display:flex;flex-direction:column;gap:8px}
+.field input[type="date"]{min-height:46px}
+
+/* admin */
+.admin-stats{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))!important}
+.admin-tbl{width:100%;border-collapse:collapse;font-size:.88rem;min-width:820px}
+.admin-tbl th{text-align:left;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px}
+.admin-tbl td{padding:8px 6px;border-top:2px solid var(--surface-2);vertical-align:middle}
+.admin-tbl tr.paused{opacity:.5}
+.ad-q{font:inherit;padding:8px 12px;border-radius:12px;border:2px solid var(--line);background:var(--bg);color:var(--ink);min-width:0;width:240px;max-width:100%}
+.uidbox{display:block;padding:10px;border-radius:12px;background:var(--surface-2);font-size:1rem;word-break:break-all;user-select:all}
+#ad-ppin{font:inherit;padding:6px 10px;border-radius:12px;border:2px solid var(--line);width:110px;background:var(--bg);color:var(--ink)}
+
+/* streak look on profile pictures */
+.avatar.streak{animation:streak-glow 1.8s ease-in-out infinite}
+.avatar.s-fire{--glow:#FF8A00;--glow2:#FF5C8A}
+.avatar.s-super{--glow:#7C5CFF;--glow2:#3E9BFF}
+.avatar.s-gold{--glow:#FFC23C;--glow2:#FFE58A}
+@keyframes streak-glow{0%,100%{box-shadow:0 0 0 3px var(--glow), 0 0 10px 3px color-mix(in srgb, var(--glow2) 70%, transparent)}50%{box-shadow:0 0 0 4px var(--glow2), 0 0 18px 6px color-mix(in srgb, var(--glow) 75%, transparent)}}
+.avatar .flame{position:absolute;right:-6%;bottom:-6%;display:flex;align-items:center;gap:1px;background:var(--surface);border-radius:99px;padding:1px 6px 1px 2px;box-shadow:0 2px 6px rgba(0,0,0,.25);font-size:.72rem;line-height:1;z-index:2}
+.avatar .flame img{width:18px!important;height:18px!important;filter:none;animation:flicker .9s ease-in-out infinite alternate}
+.avatar .flame b{font-family:var(--f-display);color:var(--glow)}
+.av-36 .flame,.av-48 .flame,.av-pick .flame{transform:scale(.8);transform-origin:bottom right;right:-12%}
+.av-110 .flame,.av-88 .flame{font-size:1rem;padding:2px 9px 2px 3px}
+.av-110 .flame img,.av-88 .flame img{width:26px!important;height:26px!important}
+@keyframes flicker{from{transform:scale(1) rotate(-6deg)}to{transform:scale(1.15) rotate(6deg)}}
+@media (prefers-reduced-motion:reduce){.avatar.streak{box-shadow:0 0 0 3px var(--glow)}}
+
+.streak-pill{background:linear-gradient(90deg, color-mix(in srgb, #FF8A00 25%, var(--surface)), color-mix(in srgb, var(--accent) 18%, var(--surface)));margin-right:6px}
+
+/* new badge pop-up, buddy profile */
+.new-badge h2{font-size:1.9rem}
+.nb-glow{width:170px;height:170px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle, color-mix(in srgb, var(--sun) 55%, transparent) 0, transparent 70%);animation:glow 1.6s ease-in-out infinite}
+.nb-img{width:120px;height:120px;filter:drop-shadow(0 8px 10px rgba(0,0,0,.25));animation:pop .7s cubic-bezier(.2,1.6,.4,1), spin-in .9s ease-out}
+@keyframes glow{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes spin-in{from{rotate:-200deg}to{rotate:0deg}}
+.rrow{cursor:pointer;transition:transform .12s}
+.rrow:hover{transform:translateX(3px)}
+.buddy-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.buddy-stats > div{background:var(--surface-2);border-radius:16px;padding:8px 4px;text-align:center;display:flex;flex-direction:column}
+.buddy-stats b{font-family:var(--f-display);font-size:1.25rem;line-height:1.1}
+.buddy-stats span{font-size:.7rem;color:var(--muted);font-weight:800}
+.buddy-card .badges{grid-template-columns:repeat(auto-fill,minmax(96px,1fr))}
+.modal:has(.buddy-card){max-width:520px}
+
+/* pet */
+.pet-stage{position:relative;display:flex;flex-direction:column;gap:6px}
+.pet-bubble{align-self:center;background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:6px 14px;font-weight:900;font-size:.9rem;text-align:center;position:relative;max-width:92%;box-shadow:0 3px 0 var(--line)}
+.pet-bubble::after{content:"";position:absolute;left:50%;bottom:-9px;width:14px;height:14px;background:var(--surface);border-right:2px solid var(--line);border-bottom:2px solid var(--line);transform:translateX(-50%) rotate(45deg)}
+.pet-home{position:relative;height:230px;border-radius:24px;overflow:hidden;background:linear-gradient(180deg, var(--sky) 0 68%, var(--ground) 68% 100%);box-shadow:inset 0 -6px 0 rgba(0,0,0,.06)}
+.pet-home.small{height:120px;width:160px;border-radius:18px;flex:none}
+@media (prefers-color-scheme: dark){.pet-home{filter:brightness(.85) saturate(.9)}}
+.pet-home .deco{position:absolute;pointer-events:none}
+.pet-home .c1{width:70px;top:14px;left:8%;opacity:.9;animation:drift 18s linear infinite}
+.pet-home .c2{width:50px;top:38px;right:10%;opacity:.8;animation:drift 24s linear infinite reverse}
+.pet-home .bf{width:34px;top:30%;left:60%;animation:flutter 6s ease-in-out infinite}
+.pet-home .sp{width:40px;top:12px;right:30%;animation:float 3s ease-in-out infinite}
+.pet-home.small .c1,.pet-home.small .c2{width:34px}
+.pet-home.small .bf,.pet-home.small .sp{display:none}
+@keyframes drift{from{transform:translateX(-30px)}to{transform:translateX(40px)}}
+@keyframes flutter{0%,100%{transform:translate(0,0) rotate(-8deg)}25%{transform:translate(40px,-20px) rotate(8deg)}50%{transform:translate(-30px,-35px) rotate(-6deg)}75%{transform:translate(-50px,5px) rotate(6deg)}}
+.pet-walker{position:absolute;left:50%;bottom:10%;transform:translateX(-50%);transition:left 1.6s ease-in-out;cursor:pointer;outline:none}
+.pet-home.small .pet-walker{bottom:8%}
+.pet-body{position:relative;transform:scale(var(--s,1));transform-origin:bottom center;animation:idle 2.4s ease-in-out infinite}
+.pet-img{width:120px;height:120px;display:block;filter:drop-shadow(0 10px 8px rgba(0,0,0,.18));transition:transform .2s}
+.pet-home.small .pet-img{width:72px;height:72px}
+.pet-body.face-right .pet-img{transform:scaleX(-1)}
+.pet-walker.walking .pet-body{animation:hop .4s ease-in-out infinite}
+.pet-body.is-plant{animation:sway 3s ease-in-out infinite;transform-origin:bottom center}
+.pet-body.mood-sleepy{animation:breathe 3.5s ease-in-out infinite;filter:saturate(.75)}
+.pet-body.mood-super .pet-img{filter:drop-shadow(0 0 14px rgba(255,194,60,.9)) drop-shadow(0 10px 8px rgba(0,0,0,.15))}
+.pet-body.jump{animation:petjump .6s cubic-bezier(.2,1.6,.4,1)!important}
+.pet-acc{position:absolute;pointer-events:none}
+.pet-acc.ribbon{width:38%;top:-4%;right:6%;rotate:18deg}
+.pet-acc.crown{width:42%;top:-24%;left:29%;animation:float 2.4s ease-in-out infinite}
+.pet-zzz{position:absolute;width:40px;top:-30px;right:-20px;animation:float 2.2s ease-in-out infinite}
+.pet-heart{position:absolute;bottom:35%;width:30px;pointer-events:none;animation:heartup 1.4s ease-out forwards}
+@keyframes idle{0%,100%{transform:scale(var(--s,1)) translateY(0)}50%{transform:scale(var(--s,1)) translateY(-4px)}}
+@keyframes hop{0%,100%{transform:scale(var(--s,1)) translateY(0) rotate(-3deg)}50%{transform:scale(var(--s,1)) translateY(-12px) rotate(3deg)}}
+@keyframes sway{0%,100%{transform:scale(var(--s,1)) rotate(-4deg)}50%{transform:scale(var(--s,1)) rotate(4deg)}}
+@keyframes breathe{0%,100%{transform:scale(var(--s,1))}50%{transform:scale(calc(var(--s,1)*1.04),calc(var(--s,1)*.96))}}
+@keyframes petjump{0%{transform:scale(var(--s,1)) translateY(0)}35%{transform:scale(calc(var(--s,1)*1.12)) translateY(-40px) rotate(-8deg)}70%{transform:scale(var(--s,1)) translateY(0) rotate(4deg)}100%{transform:scale(var(--s,1))}}
+@keyframes heartup{from{transform:translate(0,0) scale(.4);opacity:0}20%{opacity:1}to{transform:translate(var(--dx,0),-130px) scale(1.1);opacity:0}}
+.pet-pick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.pp{border:3px solid transparent;background:var(--surface-2);border-radius:18px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
+.pp img{width:58px;height:58px}
+.pp b{font-family:var(--f-display);font-weight:600}
+.pp span{font-size:.68rem;color:var(--muted)}
+.pp[aria-pressed="true"]{border-color:var(--accent);background:var(--surface)}
+.buddy-pet{display:flex;align-items:center;gap:12px;background:var(--surface-2);border-radius:18px;padding:8px}
+.buddy-pet b{font-family:var(--f-display);font-size:1.2rem}
+.pet-lvl{color:var(--ok)}
+
+/* 3D pet */
+.pet-home.pet-3d{height:270px}
+.pet-home.pet-3d.small{height:150px;width:190px}
+.pet3d{position:absolute;inset:0;cursor:pointer}
+.pet3d canvas{width:100%!important;height:100%!important;display:block}
+.pet-zzz3d{position:absolute;width:44px;top:22%;left:56%;animation:float 2.2s ease-in-out infinite;pointer-events:none}
+.pet-3d .pet-heart{z-index:2}
+
+.pet-credit{font-size:.66rem;color:var(--muted);opacity:.8}
+
+/* nudges & parent messages */
+.msg-btn{position:relative;padding:6px 10px}
+.msg-btn.has-new{background:var(--accent);color:#fff;box-shadow:0 3px 0 var(--accent-dk);animation:nudge 1.4s ease-in-out infinite}
+.letter-pill{background:color-mix(in srgb, var(--accent) 16%, var(--surface));margin-right:6px;border:none}
+.parent-note{font-family:var(--f-display);font-size:1.3rem;font-weight:600;line-height:1.35;max-width:32ch}
+textarea{font:inherit;padding:10px 12px;border-radius:14px;border:2px solid var(--line);background:var(--bg);color:var(--ink);width:100%;resize:vertical}
+.sticker-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.sticker{display:flex;align-items:center;gap:8px;border:none;background:var(--surface-2);border-radius:16px;padding:8px;text-align:left;font-weight:800;font-size:.82rem;box-shadow:0 3px 0 var(--line)}
+.sticker img{width:36px;height:36px;flex:none}
+.sticker:active,.emoji-btn:active{transform:translateY(2px)}
+.emoji-row{display:flex;gap:6px;flex-wrap:wrap}
+.emoji-btn{border:none;background:var(--surface-2);border-radius:50%;width:52px;height:52px;display:grid;place-items:center;box-shadow:0 3px 0 var(--line)}
+.emoji-btn img{width:36px;height:36px}
+.emoji-btn:hover img{animation:pop .4s}
+.nudge-btn{border:none;background:var(--surface);border-radius:50%;width:30px;height:30px;padding:3px;margin-left:6px;vertical-align:middle;box-shadow:0 2px 0 var(--line)}
+.nudge-btn img{width:22px;height:22px}
+.nudge-pop{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:40;width:min(360px, calc(100% - 32px));background:var(--surface);border-radius:26px;padding:16px;box-shadow:0 20px 50px -10px rgba(40,20,90,.5);display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;overflow:hidden;animation:nudgein .5s cubic-bezier(.2,1.5,.4,1)}
+.np-from{display:flex;align-items:center;gap:8px;font-weight:800}
+.np-sticker{width:96px;height:96px;animation:pop .6s cubic-bezier(.2,1.6,.4,1), wiggle 1.2s .6s ease-in-out infinite}
+.np-text{font-family:var(--f-display);font-weight:600;font-size:1.25rem}
+.np-rain{position:absolute;top:-30px;width:26px;opacity:.85;animation:rain 2.2s ease-in forwards;pointer-events:none}
+@keyframes nudgein{from{transform:translate(-50%,120%)}to{transform:translate(-50%,0)}}
+@keyframes wiggle{0%,100%{rotate:-6deg}50%{rotate:6deg}}
+@keyframes rain{to{transform:translateY(260px) rotate(200deg);opacity:0}}
+
+/* Chess */
+.chess-wrap{width:100%;max-width:480px}
+.chess{display:grid;grid-template-columns:repeat(8,1fr);border-radius:16px;overflow:hidden;box-shadow:0 6px 0 #7a5a3a, var(--shadow);border:4px solid #8d6a45}
+.cs{aspect-ratio:1;border:none;padding:0;display:grid;place-items:center;position:relative;font-size:clamp(1.5rem,8.5vw,2.6rem);line-height:1;cursor:pointer}
+.cs.lt{background:#F3E3C3}.cs.dk{background:#C29A6B}
+.cs.sel{background:#F7D46B!important}
+.cs.last{box-shadow:inset 0 0 0 4px rgba(124,92,255,.45)}
+.cs.tgt::after{content:"";width:28%;height:28%;border-radius:50%;background:rgba(23,163,95,.6);position:absolute}
+.cs.cap{box-shadow:inset 0 0 0 5px rgba(235,71,96,.75)}
+.cs.chk{background:radial-gradient(circle, #FF7A8C 0, #EB4760 70%)!important}
+.pc{position:relative;z-index:1;user-select:none}
+.pc.w{color:#fff;text-shadow:0 0 1px #2A2147, 0 0 1px #2A2147, 0 2px 0 #2A2147, 1px 0 0 #2A2147, -1px 0 0 #2A2147, 0 -1px 0 #2A2147}
+.pc.b{color:#2A2147;text-shadow:0 2px 0 rgba(255,255,255,.35)}
+.cs .rk,.cs .fl{position:absolute;font-style:normal;font-size:.55rem;font-weight:900;color:rgba(42,33,71,.55)}
+.cs .rk{left:3px;top:2px}.cs .fl{right:3px;bottom:1px}
+.lvl-chip{font-size:.75rem;font-weight:900;padding:3px 10px;border-radius:99px;background:var(--surface-2);color:var(--grape);min-width:70px;text-align:center}
+.dice-big{width:52px;height:52px;border-radius:12px;background:var(--surface);box-shadow:0 4px 0 var(--line);display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:1.6rem;animation:pop .4s cubic-bezier(.2,1.6,.4,1)}
+
+/* Memory Match */
+.mem-wrap{display:flex;flex-direction:column;gap:10px}
+.mem{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-width:420px;margin:0 auto;width:100%}
+.mem-card{aspect-ratio:1;border:none;border-radius:16px;background:linear-gradient(135deg,var(--grape),var(--accent));box-shadow:0 4px 0 var(--grape-dk);display:grid;place-items:center;padding:14%;transition:transform .25s}
+.mem-card .mem-back{width:60%;height:60%;opacity:.85}
+.mem-card.up{background:var(--surface);box-shadow:0 4px 0 var(--line);animation:flip .3s ease-out}
+.mem-card.up img{width:100%;height:100%}
+.mem-card.got.mine{outline:3px solid var(--accent)}
+.mem-card.got.theirs{outline:3px solid var(--sky);opacity:.85}
+.mem-card:disabled{cursor:default}
+@keyframes flip{from{transform:rotateY(90deg)}to{transform:none}}
+
+/* Snakes & Ladders */
+.sl-players{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.sl-controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dice{width:52px;height:52px;border-radius:12px;background:var(--surface);box-shadow:0 4px 0 var(--line);display:grid;grid-template-columns:repeat(3,1fr);padding:7px;gap:2px;animation:pop .4s cubic-bezier(.2,1.6,.4,1)}
+.dice span{border-radius:50%}
+.dice span.pip{background:var(--ink)}
+.dice.empty{animation:none;opacity:.5}
+.sl-wrap{width:100%;max-width:520px;margin:0 auto}
+.sl-board{position:relative;width:100%;aspect-ratio:1;border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+.sl-grid{position:absolute;inset:0;display:grid;grid-template-columns:repeat(10,1fr);grid-template-rows:repeat(10,1fr)}
+.sl-cell{background:color-mix(in srgb, var(--sun) 22%, var(--surface));font-size:.6rem;font-weight:900;color:var(--muted);padding:2px 3px}
+.sl-cell.alt{background:color-mix(in srgb, var(--sky) 18%, var(--surface))}
+.sl-cell.goal{background:var(--sun);color:#5a3b00}
+.sl-art{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.sl-token{position:absolute;width:9%;aspect-ratio:1;transform:translate(-50%,-50%);transition:left .6s ease, top .6s ease;border:3px solid;border-radius:50%;background:var(--surface)}
+.sl-token .avatar{width:100%!important;height:100%!important;box-shadow:none}
+
+/* ticks, time bar, bonus prayers, all-kids ranking */
+.ticks{font-family:var(--f-body);font-size:.95rem;font-weight:900;margin-left:8px;letter-spacing:-.18em;color:var(--muted);vertical-align:1px}
+.ticks.ok{color:var(--ok)}
+.tbar-wrap{display:flex;flex-direction:column;gap:4px;margin:6px 0 4px}
+.tbar{height:14px;border-radius:99px;background:var(--surface);overflow:hidden;box-shadow:inset 0 1px 2px rgba(0,0,0,.1)}
+.tbar i{display:block;height:100%;border-radius:99px;transition:width .8s, background .8s;background-image:linear-gradient(180deg,rgba(255,255,255,.4),rgba(255,255,255,0) 60%)}
+.bonus-wrap{display:flex;flex-direction:column;gap:8px;padding:12px;border-radius:20px;background:linear-gradient(135deg, color-mix(in srgb, var(--grape) 12%, var(--surface)), color-mix(in srgb, var(--sun) 14%, var(--surface)))}
+.bonus-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+@media (max-width:560px){.bonus-grid{grid-template-columns:1fr}}
+.bonus-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:18px;background:var(--surface);border:3px solid transparent}
+.bonus-card.done{border-color:var(--grape)}
+.bonus-card .b-ic{width:44px;height:44px;flex:none}
+.bonus-card b{font-family:var(--f-display);font-weight:700;font-size:1.15rem}
+.rk-bonus{background:var(--sun);color:#5a3b00}
+.tick.tick-sm{width:58px;height:58px}
+.tick.tick-sm img{width:38px;height:38px}
+.allkids{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:18px;background:linear-gradient(135deg, color-mix(in srgb, var(--sky) 18%, var(--surface)), color-mix(in srgb, var(--grape) 14%, var(--surface)))}
+.allkids > img{width:48px;height:48px;flex:none}
+.allkids b{font-family:var(--f-display);font-weight:600;font-size:1.1rem;display:block}
+.allkids-big{font-family:var(--f-display);font-weight:700;font-size:1.3rem;color:var(--grape);white-space:nowrap}
+.world-pill{background:color-mix(in srgb, var(--sky) 20%, var(--surface));margin-right:6px}
+.say-line .ar{font-family:"Amiri","Scheherazade New","Traditional Arabic",serif;font-size:1.55rem;line-height:2;text-align:right;color:var(--ink);font-weight:400}
+.bonus-steps{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:6px;font-size:.92rem}
+.guide-tabs{grid-template-columns:repeat(4,1fr)!important}
+
+/* How to pray: corner button + guide */
+#guide-fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:9;display:flex;align-items:center;gap:8px;border:none;border-radius:99px;padding:8px 16px 8px 8px;
+  background:var(--grape);color:#fff;font-weight:900;box-shadow:0 5px 0 var(--grape-dk), 0 10px 24px -8px rgba(60,40,120,.5)}
+#guide-fab img{width:36px;height:36px;background:#fff;border-radius:50%;padding:3px}
+#guide-fab:active{transform:translateY(3px);box-shadow:0 2px 0 var(--grape-dk)}
+body.gaming #guide-fab{display:none}
+@media (max-width:480px){#guide-fab span{display:none}#guide-fab{padding:8px}}
+.guide-screen{z-index:16}
+.guide-tabs{grid-template-columns:repeat(3,1fr)}
+.guide-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.guide-steps li{display:grid;grid-template-columns:30px 44px minmax(0,1fr);gap:10px;align-items:start;background:var(--surface);border-radius:20px;padding:12px;box-shadow:var(--shadow)}
+.guide-steps .gnum{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-family:var(--f-display);font-weight:700}
+.guide-steps img{width:44px;height:44px}
+.guide-steps b{font-family:var(--f-display);font-weight:600;font-size:1.15rem}
+.guide-steps p{margin:2px 0 0;color:var(--muted);font-size:.92rem}
+.say-card{background:var(--surface);border-radius:20px;padding:14px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px}
+.say-head{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline}
+.say-head b{font-family:var(--f-display);font-weight:700;font-size:1.2rem;color:var(--grape)}
+.say-head span{font-size:.78rem;color:var(--muted)}
+.say-line{padding:8px 10px;border-radius:14px;background:var(--surface-2)}
+.say-line .tr{font-weight:900;font-size:1.02rem}
+.say-line .en{color:var(--muted);font-size:.86rem;font-weight:700}
+.rk-row{display:grid;grid-template-columns:48px minmax(0,1fr);gap:12px;align-items:center;background:var(--surface);border-radius:20px;padding:12px;box-shadow:var(--shadow)}
+.rk-row img{width:48px;height:48px}
+.rk-row b{font-family:var(--f-display);font-size:1.2rem}
+
+/* laptop / desktop: wider page, two columns */
+@media (min-width:1024px){
+  .wrap{max-width:1280px;padding-inline:32px;gap:22px}
+  .hero{padding:30px 36px}
+  .hero h1{font-size:3rem}
+  .hero .f1{width:120px;right:48px;top:14px}
+  .hero .f2{width:52px;right:190px;top:40px}
+  .hero .f3{width:56px;right:30px;bottom:12px}
+  .cols{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:22px;align-items:start}
+  .col{display:flex;flex-direction:column;gap:22px;min-width:0}
+  .side .scores{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+  .side .score{padding:14px}
+  .side .score .grade{font-size:1.2rem}
+  .side .score .grade img{width:32px;height:32px}
+  .side .badges{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .auth-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,460px);gap:28px;align-items:start;max-width:1040px;margin:0 auto;width:100%}
+  .auth-cols .intro{padding:30px}
+  .auth-cols .auth{max-width:none}
+  .intro h2{font-size:1.9rem}
+}
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--surface-2);border-radius:18px;padding:4px;gap:4px}
+.tabs button{border:none;background:transparent;border-radius:14px;padding:10px;font-weight:900;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.invite-banner{display:flex;gap:12px;align-items:center;background:color-mix(in srgb, var(--sun) 25%, var(--surface));border-radius:18px;padding:12px 14px}
+.invite-banner img{width:46px;height:46px;flex:none}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label,.field .lab{font-weight:900;font-size:.92rem}
+.field .hint{font-size:.8rem;color:var(--muted)}
+.field input{font:inherit;padding:11px 13px;border-radius:14px;border:2px solid var(--line);background:var(--bg);color:var(--ink);width:100%}
+.at{position:relative}
+.at span{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:900}
+.at input{padding-left:30px}
+.pin-input{letter-spacing:.6em;text-align:center;font-size:1.6rem!important;font-family:var(--f-display)!important}
+.grownup{border:2px dashed var(--line);border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.err{color:var(--miss);font-weight:900;font-size:.9rem;min-height:1.2em}
+
+/* kid hero */
+.kid-hero{display:grid;grid-template-columns:auto minmax(0,1fr);gap:16px;align-items:center}
+.hello{font-family:var(--f-display);font-weight:700;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1.05;overflow-wrap:anywhere}
+.uname{color:var(--muted);font-weight:900}
+.rank-pill{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border-radius:99px;padding:3px 12px 3px 4px;font-weight:900;font-size:.9rem;margin-top:6px;border:none}
+.rank-pill img{width:28px;height:28px}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+@media (max-width:480px){.kid-hero .av-110{width:84px;height:84px}}
+
+/* today */
+.today-top{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
+.stars{display:flex;gap:4px}
+.stars img{width:38px;height:38px;transition:transform .35s cubic-bezier(.2,1.6,.4,1), filter .3s}
+.stars img.off{filter:grayscale(1) opacity(.28)}
+.stars img.on{transform:scale(1.1)}
+.progress-msg{font-family:var(--f-display);font-weight:600;font-size:1.2rem}
+.prayers{display:flex;flex-direction:column;gap:12px}
+.prayer{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;padding:12px 14px;border-radius:22px;background:var(--surface-2);border:3px solid transparent;transition:background .2s,border-color .2s}
+.prayer.s-p{background:var(--ok-bg);border-color:var(--ok)}
+.prayer.s-l{background:var(--late-bg);border-color:var(--late)}
+.prayer.s-m{background:var(--miss-bg);border-color:var(--miss)}
+.prayer.s-e{background:var(--exc-bg);border-color:var(--exc)}
+.picon{width:60px;height:60px;border-radius:18px;background:var(--surface);display:grid;place-items:center;box-shadow:0 3px 0 var(--line)}
+.picon img{width:44px;height:44px}
+.pname b{font-family:var(--f-display);font-size:1.4rem;font-weight:700;display:block;line-height:1.05}
+.pname .sub{font-size:.85rem;color:var(--muted);font-weight:800}
+.others{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.mini{border:2px solid var(--line);background:var(--surface);border-radius:999px;padding:2px 10px;font-weight:900;font-size:.76rem;color:var(--muted)}
+.mini:hover{border-color:var(--ink);color:var(--ink)}
+.mini[aria-pressed="true"].c-l{background:var(--late);border-color:var(--late);color:#fff}
+.mini[aria-pressed="true"].c-m{background:var(--miss);border-color:var(--miss);color:#fff}
+.mini[aria-pressed="true"].c-e{background:var(--exc);border-color:var(--exc);color:#fff}
+.qaza-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:7px}
+.mini.c-q{border-color:var(--grape);color:var(--grape)}
+.mini.c-q:hover{background:var(--grape);color:#fff}
+.mini.c-ok{background:var(--ok);border-color:var(--ok);color:#fff}
+.qchip{font-size:.74rem;font-weight:900;padding:3px 10px;border-radius:99px}
+.qchip.pending{background:var(--surface);color:var(--grape);border:2px dashed var(--grape)}
+.qchip.ok{background:var(--grape);color:#fff}
+.prayer.s-q{background:color-mix(in srgb, var(--grape) 14%, var(--surface));border-color:var(--grape)}
+.prayer.s-qp{border-style:dashed;border-color:var(--grape)}
+.tick{width:70px;height:70px;border-radius:50%;border:3px dashed var(--ok);background:var(--surface);display:grid;place-items:center;font-weight:900;font-size:.7rem;color:var(--ok);line-height:1.1;text-align:center;transition:transform .12s}
+.tick:hover{transform:scale(1.06)}
+.tick:active{transform:scale(.9)}
+.tick img{width:46px;height:46px}
+.tick[aria-pressed="true"]{background:var(--ok-bg);border:3px solid var(--ok);animation:pop .5s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{0%{transform:scale(.5) rotate(-20deg)}100%{transform:scale(1) rotate(0)}}
+.tick:disabled,.mini:disabled{opacity:.5;cursor:default}
+@media (max-width:480px){.prayer{gap:10px;padding:10px}.picon{width:48px;height:48px}.picon img{width:36px;height:36px}.tick{width:60px;height:60px}.tick img{width:40px;height:40px}}
+.stamp{display:flex;align-items:center;gap:8px;font-weight:900;font-size:.92rem;color:var(--ok);background:var(--ok-bg);border-radius:16px;padding:8px 12px}
+.stamp img{width:28px;height:28px;flex:none}
+
+/* race */
+.seg{display:inline-flex;background:var(--surface-2);border-radius:999px;padding:4px;gap:2px}
+.seg button{border:none;background:transparent;border-radius:999px;padding:6px 14px;font-weight:900;font-size:.86rem;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.race{display:flex;flex-direction:column;gap:10px}
+.rrow{display:grid;grid-template-columns:44px 48px minmax(0,1fr) auto;align-items:center;gap:10px;padding:8px 12px 8px 8px;border-radius:20px;background:var(--surface-2)}
+.rrow.me{background:color-mix(in srgb, var(--accent) 14%, var(--surface));outline:3px solid var(--accent)}
+.rank{width:44px;height:44px;display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:1.2rem;color:var(--muted)}
+.rank img{width:44px;height:44px}
+.rname{font-family:var(--f-display);font-weight:700;font-size:1.1rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rname .you{background:var(--accent);color:#fff;font-family:var(--f-body);font-size:.68rem;font-weight:900;padding:1px 7px;border-radius:99px;margin-left:6px;vertical-align:2px}
+.rname .rm{margin-left:6px;font-family:var(--f-body);font-size:.72rem}
+.track{height:14px;border-radius:99px;background:var(--surface);overflow:hidden;margin-top:5px;box-shadow:inset 0 1px 2px rgba(0,0,0,.08)}
+.track i{display:block;height:100%;border-radius:99px;transition:width .7s cubic-bezier(.2,.9,.3,1.15);background-image:linear-gradient(180deg,rgba(255,255,255,.35),rgba(255,255,255,0) 60%)}
+.rpct{text-align:right;line-height:1.15}
+.rpct b{font-family:var(--f-display);font-size:1.25rem;display:block}
+.rpct span{font-size:.72rem;color:var(--muted);font-weight:800;white-space:nowrap;display:block}
+.race-msg{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:18px;background:var(--surface-2);font-family:var(--f-display);font-weight:600;font-size:1.12rem}
+.race-msg img{width:42px;height:42px;flex:none}
+.invite-box{border-radius:20px;padding:14px;background:linear-gradient(135deg, color-mix(in srgb, var(--wa) 16%, var(--surface)), var(--surface-2));display:flex;flex-direction:column;gap:10px}
+.invite-btns{display:flex;gap:8px;flex-wrap:wrap}
+
+/* scores, badges */
+.scores{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:620px){.scores{grid-template-columns:1fr}}
+.score{background:var(--surface);border-radius:var(--r);padding:16px 18px;display:flex;flex-direction:column;gap:6px;box-shadow:var(--shadow)}
+.score .grade{display:flex;align-items:center;gap:8px;font-family:var(--f-display);font-weight:700;font-size:1.55rem;line-height:1.1}
+.score .grade img{width:40px;height:40px;flex:none}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(112px,1fr));gap:10px}
+.badge{display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;padding:12px 6px;border-radius:20px;background:var(--surface-2)}
+.badge img{width:58px;height:58px;filter:drop-shadow(0 4px 4px rgba(0,0,0,.15))}
+.badge b{font-size:.86rem;line-height:1.15}
+.badge span{font-size:.72rem;color:var(--muted);line-height:1.2}
+.badge.got{background:linear-gradient(180deg, color-mix(in srgb, var(--sun) 22%, var(--surface)), var(--surface-2))}
+.badge.locked img{filter:grayscale(1) opacity(.3)}
+.badge.locked b{color:var(--muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-weight:900;font-size:.8rem;background:var(--surface-2);color:var(--muted)}
+.g-ex{background:var(--ok-bg);color:var(--ok)}
+.g-vg{background:color-mix(in srgb, var(--sky) 18%, var(--surface));color:var(--sky)}
+.g-gd{background:var(--late-bg);color:var(--late)}
+.g-kt,.g-ne{background:var(--miss-bg);color:var(--miss)}
+.dots{display:flex;gap:5px;justify-content:center}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--none);display:inline-block}
+.dot.p{background:var(--ok)} .dot.l{background:var(--late)} .dot.m{background:var(--miss)} .dot.e{background:var(--exc)}
+
+/* calendar */
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.cal-nav{display:flex;gap:6px}
+.cal-nav button{background:var(--surface-2);border:none;border-radius:14px;width:42px;height:42px;font-size:1.3rem;font-weight:900;box-shadow:0 3px 0 var(--line)}
+.cal-nav button:disabled{opacity:.35;cursor:default}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.wd{font-size:.72rem;font-weight:900;text-align:center;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cell{background:var(--surface-2);border:2px solid transparent;border-radius:14px;padding:6px 2px;display:flex;flex-direction:column;align-items:center;gap:4px;min-height:56px;position:relative}
+.cell .d{font-weight:900;font-size:.95rem;line-height:1}
+.cell .dots{gap:2px;flex-wrap:wrap}
+.cell .dot{width:6px;height:6px}
+.cell .cstar{position:absolute;top:-6px;right:-4px;width:20px;height:20px}
+.cell.today{border-color:var(--accent)}
+.cell.sel{border-color:var(--grape);background:var(--surface)}
+.cell.full{background:var(--ok-bg)}
+.cell.future{opacity:.4;cursor:default}
+.cell.blank{background:transparent}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-size:.82rem;color:var(--muted);font-weight:800}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.hist,.guide{width:100%;border-collapse:collapse;font-size:.92rem}
+.hist td,.guide td{padding:9px 4px;border-bottom:2px solid var(--surface-2)}
+.hist td:last-child,.guide td:last-child{text-align:right}
+.guide td:last-child{color:var(--muted);font-variant-numeric:tabular-nums}
+.hist button{background:none;border:none;font-weight:900;text-decoration:underline;padding:0}
+.tbl-wrap{overflow-x:auto}
+
+/* grown-up mode */
+.parent-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 10px 8px 14px;border-radius:18px;background:color-mix(in srgb, var(--grape) 14%, var(--surface));outline:3px solid var(--grape)}
+.parent-bar .grow{flex:1;min-width:180px}
+.role-seg{align-self:stretch;display:flex}.role-seg button{flex:1;padding:9px 10px;font-size:.92rem}
+.pg-today{display:flex;flex-direction:column;gap:8px}
+.pg-chips{display:flex;flex-wrap:wrap;gap:6px}
+.pg-chip{border-radius:99px;padding:5px 11px;font-weight:800;font-size:.84rem;background:var(--surface-2);color:var(--muted);border:2px solid transparent}
+.pg-chip.s-p{background:var(--ok-bg);border-color:var(--ok);color:var(--ink)} .pg-chip.s-l{background:var(--late-bg);border-color:var(--late);color:var(--ink)}
+.pg-chip.s-m{background:var(--miss-bg);border-color:var(--miss);color:var(--ink)} .pg-chip.s-e{background:var(--exc-bg);border-color:var(--exc);color:var(--ink)}
+.pg-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pg-tile{background:var(--surface-2);border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+.pg-tile .grade{display:flex;align-items:center;gap:6px;font-family:var(--f-display);font-weight:700;font-size:1.05rem;line-height:1.15}
+.pg-tile .grade img{width:28px;height:28px;flex:none}
+.pb-badge{background:var(--grape);color:#fff;font-weight:900;font-size:.72rem;letter-spacing:.08em;padding:3px 10px;border-radius:99px}
+.parent-panel{outline:3px solid var(--grape)}
+.check-list{display:flex;flex-direction:column;gap:6px}
+.check-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:10px;align-items:center;padding:6px 8px 6px 12px;background:var(--surface-2);border-radius:14px}
+
+/* modal, toast */
+.overlay{position:fixed;inset:0;background:rgba(20,17,41,.55);display:grid;place-items:center;padding:16px;z-index:10}
+.modal{background:var(--surface);border-radius:28px;padding:22px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:14px;max-height:calc(100% - 32px);overflow:auto;animation:rise .25s ease-out}
+@keyframes rise{from{transform:translateY(16px);opacity:.6}to{transform:none;opacity:1}}
+.av-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.av-pick{border:3px solid transparent;background:var(--surface-2);border-radius:18px;padding:8px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.72rem;font-weight:900;color:var(--muted)}
+.av-pick .avatar{width:50px;height:50px}
+.av-pick[aria-pressed="true"]{border-color:var(--accent);color:var(--ink);background:var(--surface)}
+.actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 18px 8px 10px;border-radius:999px;font-weight:900;font-size:.95rem;z-index:20;max-width:calc(100% - 32px);display:flex;align-items:center;gap:8px;animation:rise .25s ease-out}
+.toast img{width:30px;height:30px;flex:none}
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:30;width:100%;height:100%}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <img class="float f1" src="/img/p-isha.png" alt="">
+    <img class="float f2" src="/img/glow.png" alt="">
+    <img class="float f3" src="/img/sparkles.png" alt="">
+    <div>
+      <h1>Salah Tracker</h1>
+      <div class="tag">Pray, tap the tick, collect stars!</div>
+      <div class="dates"><span id="gdate" class="pill num"></span><span id="hdate" class="pill"></span></div>
+    </div>
+  </header>
+  <main id="app" class="stack"><div class="panel muted">Loading…</div></main>
+</div>
+<div id="modal-root"></div>
+<div id="game-root"></div>
+<div id="guide-root"></div>
+<button id="guide-fab" type="button" aria-label="How to pray"><img src="/img/mosque.png" alt=""><span>How to pray</span></button>
+<canvas id="confetti" hidden></canvas>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updatePassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, arrayUnion, arrayRemove, getCountFromServer, addDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { initGames } from "/games.js";
+import { PETS, petPanel, petScene, choosePet, levelFor, petType } from "/pet.js";
+import { initNudges } from "/nudges.js";
+let nudges = null;   // stickers between buddies (Realtime Database)
+import { loadTimes, prayerWindow, prayerToday, fmtTime, fmtIn, RAKATS, KIND_LABEL, openGuide } from "/prayer.js";
+let games = null;   // friends games (Realtime Database)
+
+// ---------- content ----------
+const IMG = n => `/img/${n}.png`;
+const img = (n, cls, alt="") => { const i = document.createElement("img"); i.src = IMG(n); i.alt = alt; if (cls) i.className = cls; i.decoding = "async"; return i; };
+const PRAYERS = [
+  {k:"fajr", en:"Fajr", sub:"Dawn prayer"}, {k:"dhuhr", en:"Dhuhr", sub:"Midday prayer"}, {k:"asr", en:"Asr", sub:"Afternoon prayer"},
+  {k:"maghrib", en:"Maghrib", sub:"Sunset prayer"}, {k:"isha", en:"Isha", sub:"Night prayer"},
+];
+// Bonus (Nafl) prayers: each one confirmed by a grown-up adds half a point on top (score still tops out at 100%).
+const BONUS = [
+  {k:"tahajjud", en:"Tahajjud", sub:"Night prayer", icon:"b-tahajjud", rk:"2–8 Nafl"},
+  {k:"ishraq", en:"Ishraq", sub:"After sunrise", icon:"b-ishraq", rk:"2–4 Nafl"},
+];
+const BONUS_PTS = 0.5;
+const STATUS = { p:{short:"Prayed", pts:1}, l:{short:"Late", pts:0.75}, m:{short:"Missed", pts:0}, e:{short:"Excused", pts:null} };
+// "I did it later" (qaza): a Missed or Excused prayer made up later. It needs a grown-up's OK before it counts.
+const QAZA_PTS = 0.5;
+const GRADES = [
+  {min:90, key:"ex", en:"Excellent", color:"var(--ok)", icon:"trophy", msg:"Superstar! Keep shining."},
+  {min:75, key:"vg", en:"Very Good", color:"var(--sky)", icon:"glow", msg:"So close to Excellent. You can do it!"},
+  {min:60, key:"gd", en:"Good", color:"var(--late)", icon:"star", msg:"Good job. Try not to miss any this week."},
+  {min:40, key:"kt", en:"Keep Trying", color:"var(--miss)", icon:"rocket", msg:"Every prayer counts. One at a time!"},
+  {min:0,  key:"ne", en:"Needs Effort", color:"var(--miss)", icon:"sparkles", msg:"Let's start fresh today. You've got this!"},
+];
+const WEEKDAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+const AVATARS = {
+  cat:{name:"Kitty", bg:"#FFE0EA", g:"Animals"}, bunny:{name:"Bunny", bg:"#DDF5E3", g:"Animals"}, bear:{name:"Bear", bg:"#FFEACC", g:"Animals"}, panda:{name:"Panda", bg:"#DCE9FF", g:"Animals"},
+  fox:{name:"Fox", bg:"#FFE4D4", g:"Animals"}, owl:{name:"Owl", bg:"#EADFFF", g:"Animals"}, lion:{name:"Lion", bg:"#FFF2B8", g:"Animals"}, penguin:{name:"Penguin", bg:"#D2F0FF", g:"Animals"},
+  frog:{name:"Froggy", bg:"#E2F7D6", g:"Animals"}, chick:{name:"Chick", bg:"#FFE3EE", g:"Animals"}, unicorn:{name:"Unicorn", bg:"#F1E2FF", g:"Animals"}, dino:{name:"Dino", bg:"#D8F4EE", g:"Animals"},
+  tiger:{name:"Tiger", bg:"#FFEBC9", g:"Animals"}, monkey:{name:"Monkey", bg:"#F5E6D8", g:"Animals"}, koala:{name:"Koala", bg:"#E4ECF2", g:"Animals"}, dog:{name:"Puppy", bg:"#FCEBD9", g:"Animals"},
+  hamster:{name:"Hamster", bg:"#FFE9DA", g:"Animals"}, dolphin:{name:"Dolphin", bg:"#D6EDFF", g:"Animals"}, butterfly:{name:"Butterfly", bg:"#E9F0FF", g:"Animals"}, turtle:{name:"Turtle", bg:"#E0F5DE", g:"Animals"},
+  "av-girl":{name:"Girl", bg:"#FFE0EA", g:"Kids & heroes"}, "av-boy":{name:"Boy", bg:"#DCE9FF", g:"Kids & heroes"}, "av-hijabi":{name:"Hijabi", bg:"#EADFFF", g:"Kids & heroes"}, "av-student":{name:"Student", bg:"#E2F7D6", g:"Kids & heroes"},
+  "av-princess":{name:"Princess", bg:"#FFE3EE", g:"Kids & heroes"}, "av-prince":{name:"Prince", bg:"#FFF2B8", g:"Kids & heroes"}, "av-astronaut":{name:"Astronaut", bg:"#D2F0FF", g:"Kids & heroes"}, "av-ninja":{name:"Ninja", bg:"#E4ECF2", g:"Kids & heroes"},
+  "av-robot":{name:"Robot", bg:"#DCE9FF", g:"Kids & heroes"}, "av-teddy":{name:"Teddy", bg:"#FFEACC", g:"Kids & heroes"},
+  "av-mosque":{name:"Mosque", bg:"#D8F4EE", g:"Fun stuff"}, "av-rainbow":{name:"Rainbow", bg:"#E9F0FF", g:"Fun stuff"}, "av-planet":{name:"Planet", bg:"#EADFFF", g:"Fun stuff"}, "av-sunflower":{name:"Sunflower", bg:"#FFF2B8", g:"Fun stuff"},
+  "av-soccer":{name:"Football", bg:"#E2F7D6", g:"Fun stuff"}, "av-basketball":{name:"Basketball", bg:"#FFE4D4", g:"Fun stuff"}, "av-car":{name:"Race car", bg:"#FFE0EA", g:"Fun stuff"}, "av-kite":{name:"Kite", bg:"#D2F0FF", g:"Fun stuff"},
+  "av-guitar":{name:"Guitar", bg:"#FCEBD9", g:"Fun stuff"}, "av-art":{name:"Artist", bg:"#F1E2FF", g:"Fun stuff"}, "av-icecream":{name:"Ice cream", bg:"#FFE3EE", g:"Fun stuff"}, "av-cupcake":{name:"Cupcake", bg:"#FFE9DA", g:"Fun stuff"},
+  "av-strawberry":{name:"Strawberry", bg:"#FFE0EA", g:"Fun stuff"}, "av-watermelon":{name:"Watermelon", bg:"#E0F5DE", g:"Fun stuff"},
+};
+const AV_KEYS = Object.keys(AVATARS);
+const BADGES = [
+  {name:"First Tick", hint:"Mark your first prayer", icon:"sparkles", test:s=>s.prayed>=1},
+  {name:"Perfect Day", hint:"All 5 in one day", icon:"glow", test:s=>s.perfectDays>=1},
+  {name:"On Fire", hint:"3 full days in a row", icon:"fire", test:s=>s.best>=3},
+  {name:"Week Hero", hint:"7 full days in a row", icon:"rocket", test:s=>s.best>=7},
+  {name:"Early Bird", hint:"10 Fajr on time", icon:"bird", test:s=>s.fajr>=10},
+  {name:"100 Club", hint:"100 prayers ticked", icon:"hundred", test:s=>s.prayed>=100},
+  {name:"Month Master", hint:"30 full days in a row", icon:"crown", test:s=>s.best>=30},
+  {name:"Excellent Month", hint:"Finish a month at 90%+", icon:"trophy", test:s=>s.excMonth},
+  {name:"Night Star", hint:"Pray Tahajjud 5 times", icon:"b-tahajjud", test:s=>s.tahajjud>=5},
+  {name:"Sunrise Champ", hint:"Pray Ishraq 5 times", icon:"b-ishraq", test:s=>s.ishraq>=5},
+];
+// Usernames become a private login id; the PIN becomes the password. Nothing is ever emailed.
+const EMAIL_DOMAIN = "kids.salah-tracker.example";
+const loginEmail = u => `${u}@${EMAIL_DOMAIN}`;
+const loginPass = pin => `${pin}#salah-kid`;
+const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
+// Grown-ups have their own login: the child's username + the grown-up PIN. It opens a parent view of that one child.
+const PARENT_DOMAIN = "parents.salah-tracker.example";
+const parentEmail = u => `${u}@${PARENT_DOMAIN}`;
+const parentPass = pin => `${pin}#salah-parent`;
+const isParentUser = u => !!u?.email?.endsWith("@" + PARENT_DOMAIN);
+
+// ---------- state ----------
+const $app = document.getElementById("app");
+const WIDE = matchMedia("(min-width: 1024px)");   // laptop layout switch
+WIDE.addEventListener("change", () => render());
+const $modal = document.getElementById("modal-root");
+let auth, db;
+let me = null;                 // {uid, username, name, avatar, joined, friends[]}
+const people = new Map();      // uid -> profile (me + racers)
+const marks = new Map();       // "<uid>_<YYYY-MM>" -> {uid, month, days, checked}
+const subs = new Map();        // key -> unsubscribe
+let parentMode = false, parentHash = null;
+let asParent = false, parentLinkBad = false, parentPinPlain = null, fbCfg = null, helperAuth = null;   // grown-up login
+let view = {sel:null, calY:0, calM:0, authTab:"login", editRace:false, loginAs:"kid"};
+let boardPeriod = "week";
+let pendingInvite = null;
+try { pendingInvite = new URLSearchParams(location.search).get("invite") || sessionStorage.getItem("salah-invite"); if (pendingInvite) sessionStorage.setItem("salah-invite", pendingInvite); } catch {}
+
+// ---------- dates ----------
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parse = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d); };
+const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate()+n); return ymd(d); };
+const todayStr = () => ymd(new Date());
+const thisYM = () => todayStr().slice(0,7);
+const prevYM = () => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); return ymd(d).slice(0,7); };
+function hijriText(d){ try { return new Intl.DateTimeFormat("en-GB-u-ca-islamic-umalqura-nu-latn",{day:"numeric", month:"long", year:"numeric"}).format(d); } catch { return ""; } }
+const prettyDate = s => parse(s).toLocaleDateString("en-GB",{weekday:"long", day:"numeric", month:"long"});
+const monthName = (y,m) => new Date(y,m,1).toLocaleDateString("en-GB",{month:"long", year:"numeric"});
+function paintHeaderDates(){
+  const now = new Date();
+  document.getElementById("gdate").textContent = now.toLocaleDateString("en-GB",{weekday:"long", day:"numeric", month:"long"});
+  const h = hijriText(now), $h = document.getElementById("hdate"); $h.textContent = h; $h.hidden = !h;
+}
+async function sha(text){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+// ---------- marks + scoring ----------
+const statusOf = (uid, d, p) => marks.get(`${uid}_${d.slice(0,7)}`)?.days?.[d.slice(8)]?.[p] || null;
+const dayStatuses = (uid, d) => PRAYERS.map(p => statusOf(uid, d, p.k));
+const isDone = s => s === "p" || s === "l" || s === "e";
+const fullDay = st => st.every(isDone) && st.some(s => s !== "e");
+// Grown-up approval is per prayer: checked[DD] = {fajr:true, ...}. (Older days may hold `true`, meaning every prayer.)
+// So approving a day early never locks prayers that haven't been ticked yet (like Isha later that night).
+const isApproved = (uid, d, p) => { const c = marks.get(`${uid}_${d.slice(0,7)}`)?.checked?.[d.slice(8)]; return c === true || !!c?.[p]; };
+// Admin switch (config/app.requireConfirm). When off, every tick counts straight away and nothing waits for a grown-up.
+let requireConfirm = false;
+const isCounted = (uid, d, p) => !requireConfirm || isApproved(uid, d, p);
+const unapprovedTicks = (uid, d) => !requireConfirm ? [] : [...PRAYERS, ...BONUS].filter(p => { const s = statusOf(uid, d, p.k); return (s === "p" || s === "l") && !isApproved(uid, d, p.k); }).map(p => p.k);
+const approvedCount = (uid, d) => PRAYERS.filter(p => isApproved(uid, d, p.k) && statusOf(uid, d, p.k)).length;
+const prayedCount = st => st.filter(s => s==="p"||s==="l").length;
+// qaza state for one prayer: null | "pending" | "ok" (only meaningful when the prayer is Missed or Excused)
+const qazaOf = (uid, d, p) => { const s = statusOf(uid, d, p); const q = (s === "m" || s === "e") ? (marks.get(`${uid}_${d.slice(0,7)}`)?.qaza?.[d.slice(8)]?.[p] || null) : null; return q === "pending" && !requireConfirm ? "ok" : q; };
+function pendingQaza(uid){
+  const out = [];
+  for (const [id, m] of marks) if (id.startsWith(uid+"_") && m.qaza)
+    for (const [dd, ps] of Object.entries(m.qaza)) for (const [p, v] of Object.entries(ps||{}))
+      if (v === "pending" && qazaOf(uid, `${m.month}-${dd}`, p) === "pending") out.push({d:`${m.month}-${dd}`, p});
+  return out.sort((a,b) => a.d < b.d ? 1 : -1);
+}
+
+function mergeDeep(t, p){ for (const [k,v] of Object.entries(p)){ if (v && typeof v === "object" && !Array.isArray(v)) t[k] = mergeDeep(t[k] && typeof t[k] === "object" ? t[k] : {}, v); else t[k] = v; } return t; }
+const chains = {};
+function writeMark(ym, patch){
+  const id = `${me.uid}_${ym}`;
+  marks.set(id, mergeDeep(structuredClone(marks.get(id) || {uid:me.uid, month:ym, days:{}, checked:{}}), structuredClone(patch)));
+  render();
+  chains[id] = (chains[id] || Promise.resolve()).then(() => setDoc(doc(db, "marks", id), {uid:me.uid, month:ym, ...patch}, {merge:true}))
+    .catch(() => toast("Couldn't save. Check the internet and try again.", "lock"));
+}
+const setStatus = (d, prayer, value) => { writeMark(d.slice(0,7), {days:{[d.slice(8)]:{[prayer]:value}}}); if (value && !parentMode) logActivity("tick", {p:prayer, s:value}); };
+// A small activity trail the admin page can read (who opened the app, signed up, ticked a prayer).
+function logActivity(type, extra={}){ if (me?.uid) addDoc(collection(db, "activity"), {uid:me.uid, type, t:Date.now(), ...extra}).catch(()=>{}); }
+function setQaza(items, value){
+  const byMonth = {};
+  for (const {d, p} of items) ((byMonth[d.slice(0,7)] ||= {})[d.slice(8)] ||= {})[p] = value;
+  for (const [ym, days] of Object.entries(byMonth)) writeMark(ym, {qaza:days});
+}
+function setApproved(items, value){   // items: [{d, p}]
+  const byMonth = {};
+  for (const {d, p} of items){
+    const cur = marks.get(`${me.uid}_${d.slice(0,7)}`)?.checked?.[d.slice(8)];
+    const day = ((byMonth[d.slice(0,7)] ||= {})[d.slice(8)] ||= (cur === true ? Object.fromEntries(PRAYERS.map(x => [x.k, true])) : {}));
+    day[p] = value;
+  }
+  for (const [ym, days] of Object.entries(byMonth)) writeMark(ym, {checked:days});
+}
+const approveDays = days => setApproved(days.flatMap(d => unapprovedTicks(me.uid, d).map(p => ({d, p}))), true);
+const unapproveDay = d => writeMark(d.slice(0,7), {checked:{[d.slice(8)]:null}});
+function firstDate(uid){
+  let first = people.get(uid)?.joined || todayStr();
+  for (const [id, m] of marks) if (id.startsWith(uid+"_")) {
+    const dd = Object.keys(m.days||{}).sort()[0];
+    if (dd && `${m.month}-${dd}` < first) first = `${m.month}-${dd}`;
+  }
+  return first;
+}
+// verified (race) mode: Missed, Excused and unticked past prayers count straight away;
+// Prayed/Late count only once a grown-up approves that day (until then they're "waiting").
+function score(uid, from, to, verified=false){
+  const p = people.get(uid); if (!p) return null;
+  const today = todayStr(), end = to < today ? to : today, joined = p.joined || today;
+  let pts = 0, denom = 0; const c = {p:0,l:0,m:0,e:0,q:0,none:0,wait:0,bonus:0};
+  for (let d = from; d <= end; d = addDays(d,1)){
+    const strict = d >= joined && d < today;
+    for (const pr of PRAYERS){
+      const s = statusOf(uid, d, pr.k);
+      // "Did it later", approved: a missed prayer earns half; an excused prayer earns full (it can only help).
+      if (qazaOf(uid, d, pr.k) === "ok"){ denom++; c.q++; pts += s === "e" ? 1 : QAZA_PTS; continue; }
+      if (s === "e"){ c.e++; continue; }
+      if (s === "m"){ denom++; c.m++; continue; }
+      if (!s){ if (strict){ denom++; c.none++; } continue; }
+      if (verified && !isCounted(uid, d, pr.k)){ c.wait++; continue; }
+      denom++; c[s]++; pts += STATUS[s].pts;
+    }
+    for (const b of BONUS) if (statusOf(uid, d, b.k) === "p" && (!verified || isCounted(uid, d, b.k))){ c.bonus++; pts += BONUS_PTS; }
+  }
+  return {pct: denom ? Math.min(100, Math.round(pts/denom*100)) : null, pts, counts:c, denom};
+}
+const gradeFor = pct => pct == null ? null : GRADES.find(g => pct >= g.min);
+function weekStart(s){ const d = parse(s); d.setDate(d.getDate() - d.getDay()); return ymd(d); }
+function monthBounds(y, m){ return [ymd(new Date(y, m, 1)), ymd(new Date(y, m+1, 0))]; }
+function periodRange(period){
+  if (period === "week"){ const ws = weekStart(todayStr()); return [ws, addDays(ws,6)]; }
+  const n = new Date(); return monthBounds(n.getFullYear(), n.getMonth());
+}
+const periodScore = (uid, period, checkedOnly=false) => { const [a,b] = periodRange(period); return score(uid, a, b, checkedOnly); };
+function pendingIn(uid, period){
+  const [a,b] = periodRange(period), t = todayStr(); let n = 0;
+  for (let d = a; d <= b && d <= t; d = addDays(d,1)) n += unapprovedTicks(uid, d).length;
+  return n;   // prayed ticks waiting for a grown-up
+}
+function streak(uid){
+  let d = todayStr(), n = 0;
+  if (!fullDay(dayStatuses(uid, d))) d = addDays(d,-1);
+  while (fullDay(dayStatuses(uid, d)) && n < 3660){ n++; d = addDays(d,-1); }
+  return n;
+}
+function monthsFor(uid){
+  const f = parse(firstDate(uid)), n = new Date(), out = [];
+  let y = f.getFullYear(), m = f.getMonth();
+  while (y < n.getFullYear() || (y === n.getFullYear() && m <= n.getMonth())){
+    const [a,b] = monthBounds(y, m); out.push({y, m, sc:score(uid, a, b)});
+    m++; if (m > 11){ m = 0; y++; }
+  }
+  return out.reverse();
+}
+function stats(uid){
+  const today = todayStr(); let best = 0, cur = 0, prayed = 0, perfectDays = 0, fajr = 0, tahajjud = 0, ishraq = 0;
+  for (let d = firstDate(uid); d <= today; d = addDays(d,1)){
+    const st = dayStatuses(uid, d);
+    if (statusOf(uid, d, "tahajjud") === "p") tahajjud++;
+    if (statusOf(uid, d, "ishraq") === "p") ishraq++;
+    prayed += prayedCount(st);
+    if (st[0] === "p") fajr++;
+    if (fullDay(st)){ perfectDays++; cur++; best = Math.max(best, cur); } else if (d !== today) cur = 0;
+  }
+  const n = new Date();
+  const excMonth = monthsFor(uid).some(m => !(m.y === n.getFullYear() && m.m === n.getMonth()) && m.sc.pct >= 90 && m.sc.denom >= 50);
+  return {best, prayed, perfectDays, fajr, excMonth, tahajjud, ishraq};
+}
+// Race: me + racers ranked by approved score; ties share a place.
+const fmtPts = n => { const w = Math.floor(n), f = Math.round((n - w)*4); return (w || !f ? String(w) : "") + ["","¼","½","¾"][f]; };
+function standings(period){
+  const rows = [me.uid, ...(me.friends||[])].filter(u => people.has(u)).map(uid => ({uid, p:people.get(uid), sc:periodScore(uid, period, true), today:prayedCount(dayStatuses(uid, todayStr())), pending:pendingIn(uid, period)}));
+  // More confirmed prayers = higher place. Ties: more prayers still waiting for a grown-up, then name.
+  rows.forEach(r => { r.points = r.sc?.pts || 0; });
+  rows.sort((a,b) => b.points - a.points || b.pending - a.pending || (a.p.name||"").localeCompare(b.p.name||""));
+  let place = 0, prev;
+  rows.forEach((r,i) => { if (r.points !== prev){ place = i+1; prev = r.points; } r.place = r.points > 0 ? place : null; });
+  return rows;
+}
+const ordinal = n => n + (["th","st","nd","rd"][(n%100-20)%10] || ["th","st","nd","rd"][n%100] || "th");
+// ---------- prayer times (Hanafi), age ----------
+let timesOK = false, timesFor = "";
+const loc = () => ({city: me?.city || "Muscat", country: me?.country || "Oman"});
+const win = (d, k) => timesOK ? prayerWindow(loc().city, loc().country, d, k) : null;
+const curPrayerDay = () => timesOK ? prayerToday(loc().city, loc().country) : todayStr();
+function nextPrayer(){
+  const pt = curPrayerDay(), now = new Date();
+  for (const p of PRAYERS){ const w = win(pt, p.k); if (w && now < w.start) return {p, w}; }
+  const w = win(addDays(pt, 1), "fajr"); return w ? {p:PRAYERS[0], w} : null;
+}
+async function refreshTimes(force=false){
+  const key = `${loc().city}|${loc().country}`;
+  if (!force && key === timesFor) return;
+  timesFor = key;
+  try { await loadTimes(loc().city, loc().country); timesOK = true; }
+  catch { timesOK = false; }
+  render();
+}
+function ageOf(dob){
+  if (!dob) return null;
+  const b = parse(dob), n = new Date();
+  let a = n.getFullYear() - b.getFullYear();
+  if (n.getMonth() < b.getMonth() || (n.getMonth() === b.getMonth() && n.getDate() < b.getDate())) a--;
+  return a >= 0 && a < 120 ? a : null;
+}
+const isBirthday = dob => { if (!dob) return false; const n = new Date(); return +dob.slice(5,7) === n.getMonth()+1 && +dob.slice(8) === n.getDate(); };
+
+// Ticks next to a prayer's name: one grey ✓ = ticked, waiting; green ✓✓ = a grown-up confirmed it.
+function tickMark(s, approved){
+  if (s !== "p" && s !== "l") return null;
+  if (!requireConfirm) return el("span",{class:"ticks ok", title:"Prayed", "aria-label":"Prayed"}, "✓");
+  return el("span",{class:`ticks ${approved ? "ok" : ""}`, title: approved ? "Confirmed by a grown-up" : "Waiting for a grown-up to confirm",
+    "aria-label": approved ? "Confirmed by a grown-up" : "Waiting for a grown-up to confirm"}, approved ? "✓✓" : "✓");
+}
+// Colour bar for the prayer happening now: full and green when its time starts, then blue, yellow, red as time runs out.
+function timeBar(w, now, name, status){
+  const total = w.end - w.start, left = Math.max(0, w.end - now), frac = total > 0 ? left / total : 0;
+  const color = frac > .6 ? "var(--ok)" : frac > .35 ? "var(--sky)" : frac > .15 ? "var(--sun)" : "var(--miss)";
+  const done = status === "p" || status === "l";
+  return el("div",{class:"tbar-wrap"},
+    el("div",{class:"tbar", role:"progressbar", "aria-valuemin":"0", "aria-valuemax":"100", "aria-valuenow":String(Math.round(frac*100)), "aria-label":`Time left for ${name}`},
+      el("i",{style:`width:${Math.max(3, frac*100)}%;background:${color}`})),
+    el("div",{class:"small", style:`font-weight:900;color:${done ? "var(--ok)" : color}`},
+      done ? `${name} done! MashaAllah` : `${fmtIn(left)} left to pray ${name}`));
+}
+// Bonus prayers (Tahajjud, Ishraq): optional, earn extra points once a grown-up confirms.
+function bonusSection(uid, sel, isToday, now){
+  return el("div",{class:"bonus-wrap"},
+    el("div",{class:"row", style:"justify-content:space-between"},
+      el("div",{class:"eyebrow"},"Bonus prayers · extra points"),
+      el("button",{class:"linkbtn", onclick:()=>openGuide({el, img, tab:"bonus"})}, "How to pray these")),
+    el("div",{class:"bonus-grid"}, BONUS.map(b => {
+      const s = statusOf(uid, sel, b.k), w = win(sel, b.k), done = s === "p";
+      const notYet = isToday && w && now < w.start;
+      const approved = done && isApproved(uid, sel, b.k), locked = approved && !parentMode;
+      const toggle = () => {
+        const nv = done ? null : "p";
+        setStatus(sel, b.k, nv);
+        if (parentMode) setApproved([{d:sel, p:b.k}], nv ? true : null);
+        if (nv){ confetti(); toast(`Bonus! +½ point for ${b.en}`, "glow"); }
+      };
+      return el("div",{class:`bonus-card ${done ? "done" : ""}`},
+        img(b.icon, "b-ic"),
+        el("div",{style:"min-width:0;flex:1"},
+          el("b",{}, b.en, tickMark(done ? "p" : null, approved)),
+          el("div",{class:"small muted"}, w ? `${fmtTime(w.start)} – ${fmtTime(w.end)}` : b.sub),
+          el("div",{class:"rk-chips"}, el("span",{class:"rk rk-opt"}, b.rk), el("span",{class:"rk rk-bonus"}, "+½ bonus"))),
+        el("button",{class:"tick tick-sm", "aria-pressed":String(done), disabled:locked || notYet, "aria-label":`${b.en}: prayed`, onclick:toggle},
+          done ? img("check") : notYet ? el("span",{class:"opens"}, "Opens", el("br"), fmtTime(w.start)) : el("span",{}, "Tap when", el("br"), "prayed")));
+    })));
+}
+
+// ---------- all-kids ranking ----------
+// Each kid publishes only numbers (confirmed scores) to leaderboard/<uid>; counting how many score higher gives the rank.
+let rankInfo = null, rankAt = 0, pubLast = "", pubTimer = null;
+const weekKey = () => weekStart(todayStr()), monthKey = () => todayStr().slice(0,7);
+function publishScore(){
+  clearTimeout(pubTimer);
+  pubTimer = setTimeout(async () => {
+    if (!me) return;
+    const w = periodScore(me.uid, "week", true), m = periodScore(me.uid, "month", true);
+    const data = {wk:weekKey(), w:w?.pts ? w.pts : -1, wb:w?.counts.bonus || 0, mk:monthKey(), m:m?.pts ? m.pts : -1, mb:m?.counts.bonus || 0};   // confirmed points
+    const sig = JSON.stringify(data); if (sig === pubLast) return;
+    try { await setDoc(doc(db, "leaderboard", me.uid), {...data, t:Date.now()}); pubLast = sig; fetchRank(true); } catch {}
+  }, 2500);
+}
+async function fetchRank(force=false){
+  if (!me || (!force && Date.now() - rankAt < 5*60000)) return;
+  rankAt = Date.now();
+  const lb = collection(db, "leaderboard"), out = {};
+  try {
+    for (const [per, kf, sf] of [["week","wk","w"], ["month","mk","m"]]){
+      const key = per === "week" ? weekKey() : monthKey(), mine = periodScore(me.uid, per, true)?.pts || null;
+      const total = (await getCountFromServer(query(lb, where(kf, "==", key), where(sf, ">=", 0)))).data().count;
+      if (!mine){ out[per] = {rank:null, total}; continue; }
+      const ahead = (await getCountFromServer(query(lb, where(kf, "==", key), where(sf, ">", mine)))).data().count;
+      out[per] = {rank:ahead + 1, total:Math.max(total, ahead + 1)};
+    }
+    rankInfo = out; render();
+  } catch { /* offline, or the ranking index is still being built */ }
+}
+function rankText(r){
+  if (!r || r.rank == null) return null;
+  const {rank, total} = r;
+  if (total <= 1) return {icon:"globe", big:"No. 1", text:"You're the first on the all-kids board!"};
+  if (rank === 1) return {icon:"crown", big:"No. 1", text:`No. 1 of all ${total} kids!`};
+  if (rank <= 3) return {icon:"medal1", big:"Top 3", text:`Top 3 of all ${total} kids`};
+  if (rank <= 5) return {icon:"medal2", big:"Top 5", text:`Top 5 of all ${total} kids`};
+  if (rank <= 10) return {icon:"medal3", big:"Top 10", text:`Top 10 of all ${total} kids`};
+  const p = rank / total, tier = p <= .1 ? "Top 10%" : p <= .25 ? "Top 25%" : p <= .5 ? "Top half" : null;
+  return {icon:"globe", big:tier || `#${rank}`, text:tier ? `${tier} of all ${total} kids` : `#${rank} of ${total} kids. Keep climbing!`};
+}
+// ---------- badges: save what's earned (so buddies can see it) and celebrate new ones ----------
+let marksLoaded = false, badgeTimer = null;
+const celebrated = new Set();
+// ---------- pet ----------
+// Food = every prayer that counts (on time / late / did-it-later / bonus), across all saved months.
+function petFood(uid){
+  let n = 0;
+  for (const [id, m] of marks) if (id.startsWith(uid + "_")) for (const [dd, day] of Object.entries(m.days || {})){
+    const d = `${m.month}-${dd}`;
+    for (const [k, s] of Object.entries(day || {})){
+      if ((s === "p" || s === "l") && isCounted(uid, d, k)) n++;
+      else if ((s === "m" || s === "e") && qazaOf(uid, d, k) === "ok") n++;
+    }
+  }
+  return n;
+}
+const petCtx = () => ({el, img, me:() => me, food:petFood, todayCount:uid => dayStatuses(uid, curPrayerDay()).filter(s => s === "p" || s === "l").length + BONUS.filter(b => statusOf(uid, curPrayerDay(), b.k) === "p").length,
+  nextPrayerName:() => nextPrayer()?.p.en, confetti, toast, openChooser:openPetChooser,
+  save:async pet => { try { me.pet = pet; $modal.replaceChildren(); render(); await updateDoc(doc(db, "users", me.uid), {pet, petLevel:levelFor(petFood(me.uid))}); confetti(); toast(`Say hi to ${pet.name}!`, "e-hearts"); } catch { toast("Couldn't save. Try again.", "lock"); } }});
+function openPetChooser(){
+  modal(close => el("div",{class:"stack"}, el("div",{class:"sec-title"}, img("e-hearts"), el("h2",{}, me.pet ? "Change your pet" : "Choose your pet")),
+    el("p",{class:"small muted"}, me.pet ? "Your food and level stay the same if you change pets." : "Every prayer you pray feeds your pet and helps it grow."),
+    choosePet(petCtx(), me.pet), el("div",{class:"actions"}, el("button",{class:"btn ghost", onclick:close},"Cancel"))));
+}
+// Pet grew a level: celebrate, and save the level so buddies can see it.
+let petShown = null;
+function checkPet(){
+  if (!me?.pet || !marksLoaded) return;
+  const lv = levelFor(petFood(me.uid));
+  if (petShown === null) petShown = me.petLevel || lv;
+  if (lv > petShown){
+    petShown = lv; confetti();
+    queueModal(close => el("div",{class:"stack new-badge", style:"align-items:center;text-align:center"},
+      el("div",{class:"eyebrow", style:"color:var(--accent)"},"Your pet grew!"),
+      petScene(petCtx(), me.pet.type, lv, "super", true, "levelup" + lv),
+      el("h2",{}, `${me.pet.name} reached Level ${lv}!`),
+      el("p",{class:"muted"},"Your prayers made it grow. MashaAllah, keep it up!"),
+      el("button",{class:"btn primary", onclick:close},"Yay!")));
+  }
+  if ((me.petLevel || 0) !== lv) updateDoc(doc(db, "users", me.uid), {petLevel:lv}).catch(()=>{});
+}
+
+// ---------- message from a parent ----------
+function showParentMsg(){
+  const m = me.parentMsg; if (!m?.text) return;
+  queueModal(close => el("div",{class:"stack new-badge", style:"align-items:center;text-align:center"},
+    el("div",{class:"nb-glow"}, img("letter", "nb-img")),
+    el("div",{class:"eyebrow", style:"color:var(--accent)"}, `A message from ${m.from || "your family"}`),
+    el("p",{class:"parent-note"}, m.text),
+    el("button",{class:"btn primary", onclick:() => { close(); if (!m.seen) updateDoc(doc(db, "users", me.uid), {"parentMsg.seen":true}).catch(()=>{}); }},"❤️ Thank you!")));
+}
+function parentMsgBox(){
+  let from = me.parentMsg?.from || "Mum";
+  const ta = el("textarea",{id:"pm-text", maxlength:"240", rows:"3", placeholder:`Write a kind message for ${me.name}…`});
+  const ideas = ["So proud of you, MashaAllah! ❤️", "You prayed all 5 today, amazing!", "Don't forget Fajr tomorrow, sweetheart 🌅", "Keep going, you're doing great! 💪"];
+  const fromSeg = el("div",{class:"seg", role:"group", "aria-label":"From"}, ["Mum","Dad","Grandma","Grandpa","Family"].map(f => el("button",{type:"button", "aria-pressed":String(from === f), onclick:e => { from = f; fromSeg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b === e.currentTarget))); }}, f)));
+  return el("div",{class:"stack", style:"gap:8px"},
+    el("div",{class:"sec-title"}, img("letter"), el("div",{}, el("b",{}, `Message for ${me.name}`), el("div",{class:"small muted"}, me.parentMsg?.text ? (me.parentMsg.seen ? "Last message was read ✓" : "Last message not read yet") : "It pops up next time they open the app."))),
+    fromSeg,
+    el("div",{class:"row"}, ideas.map(i => el("button",{type:"button", class:"mini", onclick:() => { ta.value = i; }}, i))),
+    ta,
+    el("button",{class:"btn primary", style:"align-self:flex-start", onclick:async () => {
+      const text = ta.value.trim(); if (!text) return toast("Write a message first.", "letter");
+      try { await updateDoc(doc(db, "users", me.uid), {parentMsg:{from, text, t:Date.now(), seen:false}}); ta.value = ""; toast("Message saved. It will pop up for your child.", "letter"); }
+      catch { toast("Couldn't save. Try again.", "lock"); }
+    }}, img("letter"), "Send message"));
+}
+
+function checkBadges(){
+  clearTimeout(badgeTimer);
+  badgeTimer = setTimeout(async () => {
+    if (!me || !marksLoaded) return;
+    const earned = BADGES.filter(b => b.test(stats(me.uid))).map(b => b.name);
+    if (!Array.isArray(me.badges)){   // first time since this feature: save quietly, no pop-ups for old badges
+      earned.forEach(n => celebrated.add(n));
+      updateDoc(doc(db, "users", me.uid), {badges:earned}).catch(()=>{}); return;
+    }
+    const fresh = earned.filter(n => !me.badges.includes(n) && !celebrated.has(n));
+    if (!fresh.length) return;
+    fresh.forEach(n => celebrated.add(n));
+    updateDoc(doc(db, "users", me.uid), {badges:arrayUnion(...fresh)}).catch(()=>{});
+    showNewBadges(fresh.map(n => BADGES.find(b => b.name === n)));
+  }, 1200);
+}
+function showNewBadges(list){
+  let i = 0;
+  const next = close => { i++; if (i < list.length){ close(); setTimeout(() => modal(card), 150); } else close(); };
+  function card(close){
+    const b = list[i]; confetti();
+    return el("div",{class:"stack new-badge", style:"align-items:center;text-align:center"},
+      el("div",{class:"eyebrow", style:"color:var(--accent)"}, list.length > 1 ? `New badge ${i+1} of ${list.length}!` : "New badge!"),
+      el("div",{class:"nb-glow"}, img(b.icon, "nb-img")),
+      el("h2",{}, b.name),
+      el("p",{class:"muted"}, `You earned it: ${b.hint.toLowerCase()}. MashaAllah, keep going!`),
+      el("button",{class:"btn primary", onclick:() => next(close)}, i + 1 < list.length ? "Next badge" : "Yay!"));
+  }
+  queueModal(card);
+}
+
+// ---------- a buddy's profile: their week, streak and badges ----------
+function openBuddy(uid){
+  const p = people.get(uid); if (!p) return;
+  const isMe = uid === me.uid, age = ageOf(p.dob);
+  const row = standings(boardPeriod).find(r => r.uid === uid), sc = periodScore(uid, boardPeriod, true), g = gradeFor(sc?.pct ?? null);
+  const earned = new Set(isMe ? BADGES.filter(b => b.test(stats(uid))).map(b => b.name) : (p.badges || []));
+  const st = streak(uid);
+  modal(close => el("div",{class:"stack buddy-card"},
+    el("div",{style:"display:flex;flex-direction:column;align-items:center;gap:6px;text-align:center"},
+      avatar(p, 110),
+      el("h2",{}, isMe ? `${p.name} (you)` : p.name),
+      el("div",{class:"uname"}, `@${p.username}`, age != null ? ` · Age ${age}` : "")),
+    el("div",{class:"buddy-stats"},
+      el("div",{}, el("b",{class:"num"}, row?.place ? ordinal(row.place) : "–"), el("span",{}, `this ${boardPeriod}`)),
+      el("div",{}, el("b",{class:"num"}, fmtPts(row?.points || 0)), el("span",{}, "points")),
+      el("div",{}, el("b",{class:"num"}, String(st)), el("span",{}, st === 1 ? "day streak" : "day streak")),
+      el("div",{}, el("b",{}, g ? g.en : "–"), el("span",{}, "grade"))),
+    el("div",{class:"eyebrow"},"Today"),
+    el("div",{class:"row"}, dots(dayStatuses(uid, todayStr())), el("span",{class:"small muted"}, `${prayedCount(dayStatuses(uid, todayStr()))} of 5 prayed`)),
+    p.pet ? el("div",{class:"buddy-pet"}, petScene(petCtx(), p.pet.type, p.petLevel || 1, "happy", true, "buddy" + uid), el("div",{}, el("b",{}, p.pet.name), el("div",{class:"small muted"}, `${PETS[petType(p.pet.type)].name} · Level ${p.petLevel || 1}`))) : null,
+    !isMe && nudges ? el("div",{class:"eyebrow"}, `Cheer ${p.name} on`) : null,
+    !isMe && nudges ? nudges.sendGrid(uid, close) : null,
+    el("div",{class:"eyebrow"}, `Badges · ${earned.size} of ${BADGES.length}`),
+    !isMe && !Array.isArray(p.badges) ? el("div",{class:"note small"}, `${p.name}'s badges will show here after they next open Salah Tracker.`) : null,
+    el("div",{class:"badges"}, BADGES.map(b => el("div",{class:`badge ${earned.has(b.name) ? "got" : "locked"}`}, img(b.icon), el("b",{}, b.name), el("span",{}, b.hint)))),
+    el("div",{class:"actions"},
+      !isMe ? el("button",{class:"btn ghost", onclick:() => { close(); document.getElementById("games")?.scrollIntoView({behavior:"smooth"}); }}, img("game"), "Play a game") : null,
+      el("button",{class:"btn primary", onclick:close},"Close"))));
+}
+
+function allKidsCard(){
+  const rt = rankText(rankInfo?.[boardPeriod]), r = rankInfo?.[boardPeriod];
+  return el("div",{class:"allkids"},
+    img(rt?.icon || "globe"),
+    el("div",{style:"flex:1;min-width:0"},
+      el("div",{class:"eyebrow"}, `All kids on Salah Tracker · this ${boardPeriod}`),
+      rt ? el("b",{}, rt.text) : el("b",{}, r ? (requireConfirm ? "Get a prayer confirmed to join the ranking!" : "Tick a prayer to join the ranking!") : "Loading the ranking…"),
+      r?.rank ? el("div",{class:"small muted num"}, `You are #${r.rank} of ${r.total}`) : null),
+    rt ? el("span",{class:"allkids-big"}, rt.big) : null);
+}
+
+
+// ---------- dom helpers ----------
+function el(tag, attrs={}, ...kids){
+  const e = document.createElement(tag);
+  for (const [k,v] of Object.entries(attrs)){
+    if (v == null || v === false) continue;
+    if (k === "class") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (k === "style") e.style.cssText = v;
+    else e.setAttribute(k, v === true ? "" : v);
+  }
+  for (const c of kids.flat()) if (c != null && c !== false) e.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return e;
+}
+const show = (...parts) => $app.replaceChildren(...parts.filter(Boolean));
+// A kid on a streak (days in a row with all 5 prayers) gets a glowing ring and a flame with the day count:
+// 1–6 days = fire, 7–29 = super (purple), 30+ = gold. When the streak breaks, the picture goes back to normal.
+function avatar(p, size=48){
+  const key = AVATARS[p?.avatar] ? p.avatar : "cat";
+  const st = p?.uid && people.has(p.uid) ? streak(p.uid) : 0;
+  const tier = st >= 30 ? "gold" : st >= 7 ? "super" : st >= 1 ? "fire" : "";
+  return el("span",{class:`avatar av-${size} ${tier ? `streak s-${tier}` : ""}`, style:`--av-bg:${AVATARS[key].bg}`, "aria-hidden":"true", title: st ? `${st}-day streak` : null},
+    img(key), tier ? el("span",{class:"flame"}, img(tier === "gold" ? "crown" : "fire"), el("b",{}, st)) : null);
+}
+const dots = st => el("div",{class:"dots"}, st.map(s => el("span",{class:`dot ${s||""}`})));
+function gradeChip(pct){ const g = gradeFor(pct); return g ? el("span",{class:`chip g-${g.key}`}, `${g.en} · ${pct}%`) : el("span",{class:"chip"},"No ticks yet"); }
+const secTitle = (icon, title, sub) => el("div",{class:"sec-title"}, img(icon), el("div",{}, el("h2",{}, title), sub ? el("div",{class:"small muted"}, sub) : null));
+let toastTimer;
+function toast(msg, icon="sparkles"){
+  document.querySelector(".toast")?.remove();
+  const t = el("div",{class:"toast", role:"status"}, img(icon), msg);
+  document.body.append(t); clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.remove(), 3200);
+}
+function confetti(){
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const c = document.getElementById("confetti"), ctx = c.getContext("2d");
+  c.hidden = false; c.width = innerWidth; c.height = innerHeight;
+  const cols = ["#FF5C8A","#FFC23C","#3E9BFF","#17A35F","#7C5CFF"];
+  const ps = Array.from({length:140}, () => ({x:innerWidth/2, y:innerHeight/3, vx:(Math.random()-.5)*15, vy:Math.random()*-13-3, r:Math.random()*7+4, c:cols[Math.random()*cols.length|0], a:Math.random()*6, s:Math.random()>.5}));
+  let f = 0;
+  (function tick(){
+    ctx.clearRect(0,0,c.width,c.height);
+    for (const p of ps){ p.vy += .35; p.x += p.vx; p.y += p.vy; p.a += .2; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a); ctx.fillStyle = p.c;
+      if (p.s) ctx.fillRect(-p.r/2,-p.r/4,p.r,p.r/2); else { ctx.beginPath(); ctx.arc(0,0,p.r/2.4,0,7); ctx.fill(); } ctx.restore(); }
+    if (++f < 120) requestAnimationFrame(tick); else { ctx.clearRect(0,0,c.width,c.height); c.hidden = true; }
+  })();
+}
+// Celebrations (badges, pet level-ups, parent messages) wait their turn instead of covering each other.
+const popQ = [];
+const queueModal = content => { if ($modal.firstChild) popQ.push(content); else modal(content); };
+function modal(content){
+  const close = () => { $modal.replaceChildren(); if (popQ.length) setTimeout(() => { if (!$modal.firstChild && popQ.length) modal(popQ.shift()); }, 350); };
+  const ov = el("div",{class:"overlay", onclick:(e)=>{ if (e.target===ov) close(); }}, el("div",{class:"modal", role:"dialog", "aria-modal":"true"}, content(close)));
+  $modal.replaceChildren(ov);
+  setTimeout(()=> ov.querySelector("input")?.focus(), 30);
+  ov.addEventListener("keydown", e => { if (e.key==="Escape") close(); });
+}
+const pinInput = id => el("input",{id, class:"pin-input", inputmode:"numeric", pattern:"[0-9]*", maxlength:"4", autocomplete:"off", type:"password"});
+function avatarPicker(current, onPick){
+  const wrap = el("div",{class:"av-groups", role:"group", "aria-label":"Pick a picture"});
+  for (const group of ["Kids & heroes", "Animals", "Fun stuff"]){
+    const grid = el("div",{class:"av-grid"});
+    AV_KEYS.filter(k => AVATARS[k].g === group).forEach(key => grid.append(el("button",{type:"button", class:"av-pick", "aria-pressed":String(key===current),
+      onclick:(e)=>{ wrap.querySelectorAll(".av-pick").forEach(b=>b.setAttribute("aria-pressed", String(b===e.currentTarget))); onPick(key); }},
+      avatar({avatar:key}, 48), AVATARS[key].name)));
+    wrap.append(el("div",{class:"eyebrow"}, group), grid);
+  }
+  return wrap;
+}
+
+// ---------- sign in / create account ----------
+function renderAuth(){
+  const banner = pendingInvite ? el("div",{class:"invite-banner"}, img("flag"), el("div",{}, el("b",{},"You've been invited to be Salah Buddies!"), el("div",{class:"small"},"Log in, or create your account, to join."))) : null;
+  const tabs = el("div",{class:"tabs", role:"tablist"},
+    el("button",{role:"tab", "aria-selected":String(view.authTab==="login"), onclick:()=>{view.authTab="login"; render();}},"Log in"),
+    el("button",{role:"tab", "aria-selected":String(view.authTab==="signup"), onclick:()=>{view.authTab="signup"; render();}},"New here? Join"));
+  const form = el("section",{class:"panel stack auth"}, banner, tabs, view.authTab === "login" ? loginForm() : signupForm());
+  const step = (icon, title, text) => el("div",{class:"how-step"}, img(icon), el("div",{}, el("b",{}, title), el("div",{class:"small muted"}, text)));
+  const intro = el("section",{class:"panel stack intro"},
+    el("h2",{},"How it works"),
+    step("check","Tick after you pray","Tap the big tick for Fajr, Dhuhr, Asr, Maghrib and Isha. Watch your five stars fill up."),
+    step("fire","Keep your streak","Pray all five every day to grow your streak and earn badges like Week Hero and Early Bird."),
+    step("medal1","Pray with Salah Buddies","Invite friends and cousins on WhatsApp. Cheer each other on and see who's ahead."),
+    step("lock","Grown-ups confirm","A parent confirms the prayers, so it's fair for everyone."));
+  if (WIDE.matches) show(el("div",{class:"auth-cols"}, intro, form));
+  else show(form, intro);
+}
+function usernameField(id, label = "Username"){
+  return el("div",{class:"field"}, el("label",{for:id}, label),
+    el("div",{class:"at"}, el("span",{},"@"), el("input",{id, autocomplete:"username", autocapitalize:"none", spellcheck:"false", maxlength:"20", placeholder:"e.g. maryam_star"})));
+}
+function loginForm(){
+  const grown = view.loginAs === "parent", go = grown ? "Open grown-up view" : "Let's go!";
+  const err = el("div",{class:"err"});
+  const btn = el("button",{class:"btn primary block", type:"submit"}, go);
+  const pin = pinInput("login-pin");
+  const role = el("div",{class:"seg role-seg", role:"group", "aria-label":"Who is logging in?"},
+    el("button",{type:"button", "aria-pressed":String(!grown), onclick:()=>{ view.loginAs = "kid"; render(); }}, "I'm a kid"),
+    el("button",{type:"button", "aria-pressed":String(grown), onclick:()=>{ view.loginAs = "parent"; render(); }}, "I'm a grown-up"));
+  return el("form",{class:"stack", onsubmit: async e => {
+    e.preventDefault();
+    const u = document.getElementById("login-user").value.trim().toLowerCase().replace(/^@/,"");
+    if (!USERNAME_RE.test(u)) return err.textContent = grown ? "Type your child's username." : "Type your username.";
+    if (!/^\d{4}$/.test(pin.value)) return err.textContent = grown ? "The grown-up PIN has 4 numbers." : "Your PIN has 4 numbers.";
+    btn.disabled = true; btn.textContent = "Opening…";
+    try { await signInWithEmailAndPassword(auth, grown ? parentEmail(u) : loginEmail(u), grown ? parentPass(pin.value) : loginPass(pin.value)); }
+    catch (x) {
+      btn.disabled = false; btn.textContent = go; pin.value = "";
+      err.textContent = x?.code === "auth/too-many-requests" ? "Too many tries. Wait a few minutes, then try again." : x?.code === "auth/network-request-failed" ? "No internet. Check the connection."
+        : grown ? "That username and grown-up PIN didn't work. First time? Log in as your child once, tap Grown-up and type your PIN. That switches on grown-up login." : "Username or PIN isn't right. Try again!";
+    }
+  }},
+    role,
+    el("div",{class:"sec-title"}, img(grown ? "lock" : "party"), el("div",{}, el("h2",{}, grown ? "Grown-up login" : "Welcome back!"),
+      grown ? el("div",{class:"small muted"},"See how your child is doing, confirm prayers and send them a message.") : null)),
+    usernameField("login-user", grown ? "Your child's username" : "Username"),
+    el("div",{class:"field"}, el("label",{for:"login-pin"}, grown ? "Grown-up PIN" : "Secret PIN"), pin),
+    err, btn);
+}
+function signupForm(){
+  let av = "unicorn";
+  const err = el("div",{class:"err"});
+  const btn = el("button",{class:"btn primary block", type:"submit"},"Create my account");
+  const name = el("input",{id:"su-name", maxlength:"24", autocomplete:"off", placeholder:"e.g. Maryam"});
+  const pin = pinInput("su-pin"), pin2 = pinInput("su-pin2"), ppin = pinInput("su-ppin"), ppin2 = pinInput("su-ppin2");
+  const dob = el("input",{id:"su-dob", type:"date", max:todayStr(), min:"2000-01-01"});
+  const city = el("input",{id:"su-city", maxlength:"40", value:"Muscat", autocomplete:"address-level2"});
+  const country = el("input",{id:"su-country", maxlength:"40", value:"Oman", autocomplete:"country-name"});
+  return el("form",{class:"stack", onsubmit: async e => {
+    e.preventDefault();
+    const u = document.getElementById("su-user").value.trim().toLowerCase().replace(/^@/,"");
+    const n = name.value.trim();
+    if (!dob.value || dob.value > todayStr()) return err.textContent = "Add your date of birth.";
+    if (!USERNAME_RE.test(u)) return err.textContent = "Username: 3 to 20 letters, numbers or _ (no spaces).";
+    if (!n) return err.textContent = "Type the name to show on screen.";
+    if (!/^\d{4}$/.test(pin.value)) return err.textContent = "Your PIN needs exactly 4 numbers.";
+    if (pin.value !== pin2.value) return err.textContent = "Your two PINs don't match.";
+    if (!/^\d{4}$/.test(ppin.value)) return err.textContent = "Ask a grown-up to set their 4-number PIN.";
+    if (ppin.value !== ppin2.value) return err.textContent = "The grown-up PINs don't match.";
+    if (ppin.value === pin.value) return err.textContent = "The grown-up PIN must be different from yours.";
+    btn.disabled = true; btn.textContent = "Creating…";
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, loginEmail(u), loginPass(pin.value));
+      const uid = cred.user.uid;
+      await setDoc(doc(db, "users", uid), {username:u, name:n, avatar:av, dob:dob.value, city:city.value.trim() || "Muscat", country:country.value.trim() || "Oman", joined:todayStr(), friends:[], created:new Date().toISOString()});
+      await setDoc(doc(db, "users", uid, "private", "settings"), {parentPinHash: await sha(`salah-parent:${uid}:${ppin.value}`)});
+      linkParentLogin({uid, username:u}, ppin.value);
+      try { sessionStorage.setItem("salah-new", "1"); } catch {}
+      confetti(); toast(`Welcome, ${n}!`, "party");
+      startSession(cred.user);
+    } catch (x) {
+      btn.disabled = false; btn.textContent = "Create my account";
+      err.textContent = x?.code === "auth/email-already-in-use" ? `@${u} is already taken. Try another username.` : x?.code === "auth/operation-not-allowed" ? "Sign-ups aren't switched on yet. A grown-up needs to turn on Email/Password in Firebase Authentication." : x?.code === "auth/network-request-failed" ? "No internet. Check the connection." : "Couldn't create the account. Try again.";
+    }
+  }},
+    el("div",{class:"sec-title"}, img("sparkles"), el("h2",{},"Make your account")),
+    usernameField("su-user"),
+    el("div",{class:"field"}, el("label",{for:"su-name"},"Name on screen"), name, el("span",{class:"hint"},"This is what your Salah Buddies see.")),
+    el("div",{class:"field"}, el("label",{for:"su-dob"},"Date of birth"), dob),
+    el("div",{class:"two"},
+      el("div",{class:"field"}, el("label",{for:"su-city"},"City"), city),
+      el("div",{class:"field"}, el("label",{for:"su-country"},"Country"), country)),
+    el("span",{class:"hint", style:"margin-top:-8px"},"Used for your prayer times."),
+    el("div",{class:"field"}, el("span",{class:"lab"},"Pick your picture"), avatarPicker(av, k => av = k)),
+    el("div",{class:"field"}, el("label",{for:"su-pin"},"Choose a secret 4-number PIN"), pin),
+    el("div",{class:"field"}, el("label",{for:"su-pin2"},"Type your PIN again"), pin2),
+    el("div",{class:"grownup"},
+      el("div",{class:"sec-title"}, img("lock"), el("div",{}, el("b",{},"For a grown-up"), el("div",{class:"small muted"},"Parents use this PIN to confirm their child's prayers. Kids, ask Mum or Dad to type it."))),
+      el("div",{class:"field"}, el("label",{for:"su-ppin"},"Grown-up PIN"), ppin),
+      el("div",{class:"field"}, el("label",{for:"su-ppin2"},"Grown-up PIN again"), ppin2)),
+    el("p",{class:"small muted"},"Write your username and PIN somewhere safe. There's no email, so a forgotten PIN can only be changed while you're logged in."),
+    err, btn);
+}
+
+// ---------- live data ----------
+function sub(key, fn){ if (!subs.has(key)) subs.set(key, fn()); }
+function unsub(key){ subs.get(key)?.(); subs.delete(key); }
+function unsubAll(){ for (const k of [...subs.keys()]) unsub(k); }
+
+function startSession(user){
+  asParent = isParentUser(user);
+  const uid = asParent ? user.displayName : user.uid;     // a grown-up login carries its child's id
+  if (asParent && !uid){ parentLinkBad = true; return render(); }
+  sub("me", () => onSnapshot(doc(db, "users", uid), snap => {
+    if (!snap.exists()){ if (asParent){ parentLinkBad = true; render(); } return; }      // just created; the profile write follows
+    const first = !me;
+    me = {uid, friends:[], ...snap.data()};
+    people.set(uid, me);
+    if (asParent){
+      if (me.parent !== user.uid){ parentLinkBad = true; me = null; return render(); }
+      parentMode = true; refreshTimes();
+      if (first){ const n = new Date(); view.sel = null; view.calY = n.getFullYear(); view.calM = n.getMonth(); watchKidMonths(uid); }
+      return render();
+    }
+    syncRacers();
+    refreshTimes();   // only reloads when the city changes
+    checkBadges(); checkPet();
+    if (first){
+      const n = new Date(); view.sel = null; view.calY = n.getFullYear(); view.calM = n.getMonth();
+      if (!me.disabled){ handleInvite(); games?.start(); nudges?.start(); if (me.parentMsg?.text && !me.parentMsg.seen) setTimeout(showParentMsg, 1200); }
+      updateDoc(doc(db, "users", uid), {lastSeen:Date.now(), visits:increment(1)}).catch(()=>{});
+      logActivity(sessionStorage.getItem("salah-new") ? "signup" : "open"); try { sessionStorage.removeItem("salah-new"); } catch {}
+    }
+    render();
+  }, () => toast("Couldn't load your profile. Reload the page.", "lock")));
+  sub("mymarks", () => onSnapshot(query(collection(db, "marks"), where("uid", "==", uid)), snap => {
+    snap.docs.forEach(d => marks.set(d.id, structuredClone(d.data())));
+    marksLoaded = true; publishScore(); fetchRank(); checkBadges(); checkPet();
+    render();
+  }, () => toast("Couldn't load your ticks. Reload the page.", "lock")));
+}
+// Grown-up view: load the child's months one by one (a grown-up login opens single months; it can't search them).
+function watchKidMonths(uid){
+  const start = (me.joined || me.created || todayStr()).slice(0,7), list = [];
+  for (let ym = thisYM(); ym >= start && list.length < 24; ){ list.push(ym); const d = parse(ym + "-01"); d.setMonth(d.getMonth() - 1); ym = ymd(d).slice(0,7); }
+  let left = list.length;
+  for (const ym of list) sub(`pm:${ym}`, () => onSnapshot(doc(db, "marks", `${uid}_${ym}`), s => {
+    if (s.exists()) marks.set(s.id, structuredClone(s.data()));
+    if (--left <= 0) marksLoaded = true;
+    if (marksLoaded) publishScore();
+    render();
+  }, () => {}));
+}
+// Make (or update) the grown-up login for a child. Runs in a second, hidden session so the child stays logged in.
+async function linkParentLogin(kid, pin, oldPin){
+  if (asParent || !kid?.uid || !kid?.username || !fbCfg) return false;
+  try {
+    helperAuth ||= getAuth(initializeApp(fbCfg, "grown-up-helper"));
+    const email = parentEmail(kid.username); let cred = null;
+    try { cred = await signInWithEmailAndPassword(helperAuth, email, parentPass(pin)); } catch {}
+    if (!cred && oldPin && oldPin !== pin){
+      try { cred = await signInWithEmailAndPassword(helperAuth, email, parentPass(oldPin)); await updatePassword(cred.user, parentPass(pin)); } catch { cred = null; }
+    }
+    if (!cred){ try { cred = await createUserWithEmailAndPassword(helperAuth, email, parentPass(pin)); } catch { return false; } }
+    if (cred.user.displayName !== kid.uid) await updateProfile(cred.user, {displayName:kid.uid});
+    if (people.get(kid.uid)?.parent !== cred.user.uid) await updateDoc(doc(db, "users", kid.uid), {parent:cred.user.uid});
+    await signOut(helperAuth);
+    return true;
+  } catch { return false; }
+}
+// Racers: subscribe to each friend's profile and their this-month + last-month ticks.
+function syncRacers(){
+  const want = new Set(me.friends || []);
+  for (const key of [...subs.keys()]) if (key.startsWith("f:")) { const fuid = key.split(":")[1]; if (!want.has(fuid)) { unsub(key); people.delete(fuid); } }
+  for (const fuid of want){
+    sub(`f:${fuid}:profile`, () => onSnapshot(doc(db, "users", fuid), s => { if (s.exists()) { people.set(fuid, {uid:fuid, ...s.data()}); render(); } }, () => {}));
+    for (const ym of [thisYM(), prevYM()])
+      sub(`f:${fuid}:${ym}`, () => onSnapshot(doc(db, "marks", `${fuid}_${ym}`), s => { if (s.exists()) { marks.set(s.id, s.data()); render(); } }, () => {}));
+  }
+}
+
+// ---------- invites ----------
+const inviteLink = () => `${location.origin}/?invite=${me.uid}`;
+const inviteText = () => `${me.name} wants you to be their Salah Buddy on Salah Tracker! Let's remind each other to pray, tick our 5 daily prayers and collect stars together. Tap to join: ${inviteLink()}`;
+async function handleInvite(){
+  const from = pendingInvite; pendingInvite = null;
+  try { sessionStorage.removeItem("salah-invite"); history.replaceState(null, "", location.pathname); } catch {}
+  if (!from || from === me.uid) return;
+  if ((me.friends||[]).includes(from)) return toast("You're already racing each other!", "flag");
+  let inviter;
+  try { const s = await getDoc(doc(db, "users", from)); if (!s.exists()) throw 0; inviter = {uid:from, ...s.data()}; }
+  catch { return toast("That invite link doesn't work any more.", "lock"); }
+  modal(close => el("div",{class:"stack", style:"text-align:center;align-items:center"},
+    avatar(inviter, 110),
+    el("h2",{}, `${inviter.name} wants to be your Salah Buddy!`),
+    el("p",{class:"muted"}, `@${inviter.username} invited you. You'll pray together, cheer each other on, and see each other's stars.`),
+    el("div",{class:"actions", style:"justify-content:center"},
+      el("button",{class:"btn ghost", onclick:close},"No thanks"),
+      el("button",{class:"btn primary", onclick: async () => {
+        try {
+          await updateDoc(doc(db, "users", me.uid), {friends: arrayUnion(from)});
+          await updateDoc(doc(db, "users", from), {friends: arrayUnion(me.uid)});
+          close(); confetti(); toast(`You're racing ${inviter.name} now!`, "flag");
+        } catch { toast("Couldn't join. Try the link again.", "lock"); }
+      }}, img("hands"), "Yes, let's pray together"))));
+}
+async function removeRacer(fuid){
+  const p = people.get(fuid);
+  try {
+    await updateDoc(doc(db, "users", me.uid), {friends: arrayRemove(fuid)});
+    await updateDoc(doc(db, "users", fuid), {friends: arrayRemove(me.uid)}).catch(() => {});
+    toast(`${p?.name || "Buddy"} removed from your Salah Buddies`, "flag");
+  } catch { toast("Couldn't remove. Try again.", "lock"); }
+}
+
+// ---------- main view ----------
+function render(){
+  if (!auth) return;
+  if (!auth.currentUser) return renderAuth();
+  if (auth.currentUser.email?.endsWith("@admins.salah-tracker.example")){ location.href = "/admin"; return; }
+  if (parentLinkBad) return show(el("section",{class:"panel stack"}, el("div",{class:"sec-title"}, img("lock"), el("h2",{},"Grown-up login needs a refresh")),
+    el("p",{class:"muted"},"Log in as your child once, tap Grown-up and type your grown-up PIN. That links this login to your child again."),
+    el("button",{class:"btn primary", onclick:logout},"OK, log out")));
+  if (!me) return show(el("div",{class:"panel muted"},"Opening your tracker…"));
+  if (me.disabled) return show(el("section",{class:"panel stack"}, el("div",{class:"sec-title"}, img("lock"), el("h2",{},"This account is paused")),
+    el("p",{class:"muted"},"Please ask a grown-up to contact the Salah Tracker admin."), el("button",{class:"btn ghost", onclick:logout},"Log out")));
+  const y = scrollY;
+  renderKid();
+  scrollTo(0, y);
+}
+
+function renderKid(){
+  const uid = me.uid, pt = curPrayerDay(), sel = view.sel || pt, isToday = sel === pt, now = new Date();
+  const statuses = dayStatuses(uid, sel);
+  const doneCount = statuses.filter(isDone).length;
+  const waiting = unapprovedTicks(uid, sel), anyApproved = approvedCount(uid, sel) > 0;
+  const myRow = standings(boardPeriod).find(r => r.uid === uid);
+  const racing = (me.friends||[]).length > 0;
+  const age = ageOf(me.dob), bday = isBirthday(me.dob);
+
+  const hero = el("section",{class:"panel"},
+    el("div",{class:"toolbar", style:"margin-bottom:12px"},
+      el("button",{class:"btn ghost sm", onclick:openParent}, img("lock"), parentMode ? "Grown-up mode on" : pendingQaza(me.uid).length ? `Grown-up · ${pendingQaza(me.uid).length} to confirm` : "Grown-up"),
+      el("span",{style:"flex:1"}),
+      el("button",{class:`btn ghost sm msg-btn ${nudges?.unread() ? "has-new" : ""}`, onclick:() => nudges?.openInbox(), "aria-label":"Messages from buddies"}, img("envelope"), nudges?.unread() ? String(nudges.unread()) : null),
+      el("button",{class:"linkbtn", onclick:openProfile},"Edit profile"),
+      el("button",{class:"linkbtn", onclick:logout},"Log out")),
+    el("div",{class:"kid-hero"},
+      el("button",{class:"av-btn", onclick:openAvatar, "aria-label":"Change my picture"}, avatar(me, 110), el("span",{class:"edit"},"change")),
+      el("div",{style:"min-width:0"},
+        el("div",{class:"hello"}, `Hi ${me.name}!`),
+        el("div",{class:"uname"}, `@${me.username}`, age != null ? ` · Age ${age}` : ""),
+        bday ? el("div",{class:"rank-pill bday-pill"}, img("cake"), `Happy birthday, ${me.name}!`) : null,
+        me.parentMsg?.text ? el("button",{class:"rank-pill letter-pill", onclick:showParentMsg}, img("letter"), `Message from ${me.parentMsg.from || "family"}${me.parentMsg.seen ? "" : " · new!"}`) : null,
+        streak(uid) ? el("div",{class:"rank-pill streak-pill"}, img("fire"), `${streak(uid)}-day streak! Keep it burning`) : null,
+        games?.inviteCount() ? el("button",{class:"rank-pill game-pill", onclick:()=>document.getElementById("games")?.scrollIntoView({behavior:"smooth"})},
+          img("game"), `${games.inviteCount()} game invite${games.inviteCount()>1?"s":""}! Tap to play`) : null,
+        rankText(rankInfo?.[boardPeriod]) ? el("button",{class:"rank-pill world-pill", onclick:()=>document.getElementById("race")?.scrollIntoView({behavior:"smooth"})},
+          img(rankText(rankInfo[boardPeriod]).icon), `${rankText(rankInfo[boardPeriod]).big} of all kids this ${boardPeriod}`) : null,
+        racing && myRow?.place ? el("button",{class:"rank-pill", onclick:()=>document.getElementById("race")?.scrollIntoView({behavior:"smooth"})},
+          img(myRow.place <= 3 ? `medal${myRow.place}` : "flag"), `${ordinal(myRow.place)} among your Salah Buddies`) : null,
+        me.dob ? null : el("button",{class:"linkbtn", style:"display:block;padding-left:0", onclick:openProfile},"Add your birthday"))));
+
+  const rows = PRAYERS.map((p,i) => {
+    const s = statuses[i], w = win(sel, p.k);
+    const notYet = isToday && w && now < w.start;                 // can't tick a prayer before its time starts
+    const isNow = isToday && w && now >= w.start && now < w.end;
+    const approved = isApproved(uid, sel, p.k) && !!s;
+    const locked = approved && !parentMode;                       // only prayers a grown-up approved are locked
+    const choose = code => {
+      const nv = s === code ? null : code;
+      setStatus(sel, p.k, nv);
+      if (parentMode) setApproved([{d:sel, p:p.k}], (nv === "p" || nv === "l") ? true : null);   // a grown-up's own tick is approved
+      if (nv === "p" || nv === "l"){
+        if (fullDay(dayStatuses(uid, sel))){ confetti(); toast(`All 5 done! Amazing, ${me.name}!`, "party"); }
+        else if (me.pet) toast(`${["Great job!","Well done!","Yum!","Awesome!"][Math.random()*4|0]} +1 food for ${me.pet.name}`, "food");
+        else toast(["One more star!","Great job!","Well done!","Awesome!"][Math.random()*4|0], "star");
+      }
+    };
+    const q = qazaOf(uid, sel, p.k), item = [{d:sel, p:p.k}];
+    // "I did it later" row: works even on approved prayers; the child asks, a grown-up approves.
+    const qazaRow = (s === "m" || s === "e") ? el("div",{class:"qaza-row"},
+      q === null ? el("button",{class:"mini c-q", onclick:()=>{ setQaza(item, requireConfirm ? "pending" : "ok"); toast(requireConfirm ? "Sent to a grown-up to confirm" : "Well done for making it up! +points", "check"); }}, "I did it later") : null,
+      q === "pending" ? el("span",{class:"qchip pending"}, "Did it later · waiting for grown-up OK") : null,
+      q === "ok" ? el("span",{class:"qchip ok"}, requireConfirm ? "Did it later ✓✓" : "Did it later ✓") : null,
+      q === "pending" && parentMode ? el("button",{class:"mini c-ok", onclick:()=>{ setQaza(item, "ok"); toast(`${p.en} confirmed`, "check"); }}, "Confirm") : null,
+      q === "pending" ? el("button",{class:"mini", onclick:()=>setQaza(item, null)}, parentMode ? "Not confirmed" : "Undo") : null,
+      q === "ok" && parentMode ? el("button",{class:"mini", onclick:()=>setQaza(item, null)}, "Undo confirm") : null) : null;
+    return el("div",{class:`prayer ${s?`s-${s}`:""} ${q==="ok"?"s-q":q==="pending"?"s-qp":""} ${isNow && !s ? "is-now" : ""}`},
+      el("div",{class:"picon"}, img(`p-${p.k}`)),
+      el("div",{class:"pname"},
+        el("b",{}, p.en, isNow ? el("span",{class:"now-chip"},"Now") : null, tickMark(s, approved)),
+        el("span",{class:"sub"}, w ? `${fmtTime(w.start)} – ${fmtTime(w.end)}` : p.sub),
+        el("div",{class:"rk-chips"}, RAKATS[p.k].map(r => el("span",{class:`rk rk-${r.kind}`}, `${r.n} ${r.label || KIND_LABEL[r.kind]}`))),
+        el("div",{class:"others", role:"group", "aria-label":`Other choices for ${p.en}`},
+          ["l","m","e"].map(code => el("button",{class:`mini c-${code}`, "aria-pressed":String(s===code), disabled:locked || (notYet && code !== "e"), onclick:()=>choose(code)}, STATUS[code].short))),
+        qazaRow),
+      el("button",{class:"tick", "aria-pressed":String(s==="p"), disabled:locked || notYet, "aria-label":`${p.en}: prayed on time`, onclick:()=>choose("p")},
+        s==="p" ? img("check") : notYet ? el("span",{class:"opens"}, "Opens", el("br"), fmtTime(w.start)) : el("span",{}, "Tap when", el("br"), "prayed")));
+  });
+  // "Now" / "Next" bar for the current prayer day
+  let nowBar = null;
+  if (isToday && timesOK){
+    const cur = PRAYERS.find(p => { const w = win(sel, p.k); return w && now >= w.start && now < w.end; });
+    const nxt = nextPrayer();
+    nowBar = el("div",{class:"next-bar"}, img("clock"),
+      el("div",{style:"flex:1;min-width:0"},
+        cur ? el("b",{}, `Now: ${cur.en} · until ${fmtTime(win(sel, cur.k).end)}`) : el("b",{}, "No prayer time right now"),
+        cur ? timeBar(win(sel, cur.k), now, cur.en, statuses[PRAYERS.indexOf(cur)]) : null,
+        nxt ? el("div",{class:"small"}, `Next: ${nxt.p.en} at ${fmtTime(nxt.w.start)} (in ${fmtIn(nxt.w.start - now)})`) : null),
+      el("button",{class:"linkbtn", onclick:openProfile}, `${loc().city}`));
+  }
+  const msg = doneCount === 5 ? "All 5 done! You're a star!" : doneCount === 0 ? (isToday ? "Let's fill the stars today!" : "No ticks on this day yet.") : `${doneCount} of 5 done. ${5-doneCount} to go!`;
+  const label = isToday ? (sel === todayStr() ? "Today" : "Tonight · Isha is still open") : "Fixing a past day";
+  const daySheet = el("section",{class:"panel stack", id:"day"},
+    el("div",{class:"today-top"},
+      el("div",{}, el("div",{class:"eyebrow"}, label), el("h2",{}, prettyDate(sel)), el("div",{class:"small muted"}, hijriText(parse(sel)))),
+      el("div",{class:"stars", "aria-label":`${doneCount} of 5 stars`}, PRAYERS.map((_,i) => img("star", i<doneCount ? "on" : "off")))),
+    nowBar,
+    el("div",{class:"progress-msg"}, msg),
+    !requireConfirm ? null : anyApproved && !waiting.length ? el("div",{class:"stamp"}, img("check"), parentMode ? "All ticks confirmed. You can still fix them." : "All your ticks are confirmed ✓✓ Prayers you haven't ticked yet stay open.")
+      : el("div",{class:"note small"}, parentMode ? (waiting.length ? `${waiting.length} prayer${waiting.length>1?"s":""} to confirm below.` : "Nothing to confirm on this day yet.")
+        : "Missed and Excused count straight away. Prayed ticks get a green ✓✓ when a grown-up confirms them."),
+    el("div",{class:"prayers"}, rows),
+    bonusSection(uid, sel, isToday, now),
+    parentMode ? el("div",{class:"actions", style:"justify-content:flex-start"},
+      waiting.length ? el("button",{class:"btn approve", onclick:()=>{ approveDays([sel]); toast(`${prettyDate(sel)} confirmed`,"check"); }},`Confirm ${waiting.length} prayer${waiting.length>1?"s":""}`) : null,
+      anyApproved ? el("button",{class:"btn ghost", onclick:()=>{ unapproveDay(sel); toast("Confirmation removed","lock"); }},"Undo confirm") : null) : null,
+    isToday ? null : el("button",{class:"linkbtn", style:"align-self:flex-start", onclick:()=>{view.sel=pt; render();}}, "Back to today"));
+
+  const tile = (label, icon, sc) => {
+    const g = gradeFor(sc?.pct ?? null);
+    return el("div",{class:"score"},
+      el("div",{class:"eyebrow"}, label),
+      el("div",{class:"grade"}, img(g?.icon || icon), g ? g.en : "No ticks yet"),
+      el("div",{class:"track"}, el("i",{style:`width:${sc?.pct ?? 0}%;background-color:${g?.color || "var(--none)"}`})),
+      el("div",{class:"small muted num"}, g ? `${sc.pct}% · ${sc.counts.p} on time, ${sc.counts.l} late, ${sc.counts.q ? `${sc.counts.q} done later, ` : ""}${sc.counts.m + sc.counts.none} missed` : "Tick a prayer to start."),
+      g ? el("div",{class:"small"}, g.msg) : null);
+  };
+  const st = streak(uid);
+  const scores = el("section",{class:"scores"},
+    tile(asParent ? "This week" : "My week", "star", periodScore(uid,"week")),
+    tile(asParent ? "This month" : "My month", "trophy", periodScore(uid,"month")),
+    el("div",{class:"score"},
+      el("div",{class:"eyebrow"},"Streak"),
+      el("div",{class:"grade num"}, img(st ? "fire" : "sparkles"), `${st} day${st===1?"":"s"}`),
+      el("div",{class:"small muted"},"Days in a row with all 5 prayers."),
+      el("div",{class:"small"}, st >= 7 ? "A whole week or more. Amazing!" : st ? "Keep the fire going tomorrow!" : "Pray all 5 today to start a streak.")));
+
+  const s = stats(uid), got = BADGES.filter(b=>b.test(s)).length;
+  const badges = el("section",{class:"panel stack"},
+    secTitle("crown", asParent ? `${me.name}'s badges` : "My Badges", `${got} of ${BADGES.length} collected`),
+    el("div",{class:"badges"}, BADGES.map(b => { const has = b.test(s);
+      return el("div",{class:`badge ${has?"got":"locked"}`}, img(b.icon), el("b",{}, b.name), el("span",{}, b.hint)); })));
+
+  const bar = parentMode && !asParent ? el("div",{class:"parent-bar"},
+      el("span",{class:"pb-badge"},"GROWN-UP MODE"),
+      el("span",{class:"grow small"},"Confirm your child's prayers, fix ticks, change PINs."),
+      el("button",{class:"btn ghost sm", onclick:()=>{ parentMode = false; toast("Grown-up mode off","lock"); render(); }},"Exit")) : null;
+  const check = parentMode ? parentCheck() : null;
+  if (asParent){
+    // Grown-up login: an overview of the child, the message box, confirming, the calendar and the child's profile.
+    const top = parentHome();
+    if (WIDE.matches) show(el("div",{class:"cols"},
+      el("div",{class:"col"}, top, check, daySheet, renderCalendar()),
+      el("div",{class:"col side"}, scores, badges, petPanel(petCtx()), history(), gradeGuide())));
+    else show(top, check, daySheet, scores, renderCalendar(), badges, petPanel(petCtx()), history(), gradeGuide());
+    return;
+  }
+  if (WIDE.matches){
+    // Laptop: today's prayers + calendar on the left, scores + race + badges on the right.
+    show(bar, el("div",{class:"cols"},
+      el("div",{class:"col"}, hero, check, daySheet, renderCalendar()),
+      el("div",{class:"col side"}, petPanel(petCtx()), scores, raceBoard(), games?.panel(), badges, history(), gradeGuide())));
+  } else {
+    show(bar, hero, check, daySheet, petPanel(petCtx()), raceBoard(), games?.panel(), scores, badges, renderCalendar(), history(), gradeGuide());
+  }
+}
+
+function raceBoard(){
+  const rows = standings(boardPeriod), mine = rows.find(r => r.uid === me.uid);
+  const racing = rows.length > 1;
+  let msg = null;
+  if (racing){
+    const ahead = rows.filter(r => r.points > mine.points).sort((a,b)=>a.points-b.points);
+    const tied = rows.filter(r => r.uid !== me.uid && mine.points > 0 && r.points === mine.points);
+    if (!mine.points) msg = ["flag", mine.pending ? `You have ${mine.pending} prayer${mine.pending>1?"s":""} waiting. Ask a grown-up to confirm them to get on the board!` : requireConfirm ? "You're not on the board yet. Tick your prayers and ask a grown-up to confirm them!" : "You're not on the board yet. Tick your prayers to collect points!"];
+    else if (!ahead.length && tied.length) msg = ["medal1", `You're tied for 1st with ${tied.map(t=>t.p.name).join(" and ")}!`];
+    else if (!ahead.length) msg = ["trophy", "You're in 1st place! Everyone is chasing you!"];
+    else msg = ["rocket", `You're ${ordinal(mine.place)}. ${ahead[0].p.name} is just ${fmtPts(ahead[0].points - mine.points)} point${ahead[0].points - mine.points === 1 ? "" : "s"} ahead. Catch up!`];
+  }
+  const share = async () => {
+    try { await navigator.share({title:"Salah Tracker", text:inviteText().replace(inviteLink(),"").trim(), url:inviteLink()}); }
+    catch (e) { if (e?.name !== "AbortError") copyLink(); }
+  };
+  const copyLink = async () => {
+    try { await navigator.clipboard.writeText(inviteLink()); toast("Invite link copied!", "check"); }
+    catch { modal(close => el("div",{class:"stack"}, el("h2",{},"Your invite link"), el("input",{value:inviteLink(), readonly:true, style:"font:inherit;padding:10px;border-radius:12px;border:2px solid var(--line);width:100%", onfocus:e=>e.target.select()}), el("div",{class:"actions"}, el("button",{class:"btn primary", onclick:close},"Done")))); }
+  };
+  return el("section",{class:"panel stack", id:"race"},
+    el("div",{class:"row", style:"justify-content:space-between"},
+      secTitle("flag","My Salah Buddies", racing ? (requireConfirm ? "Points from confirmed prayers. Tap a buddy to see their badges." : "Points for every prayer. Tap a buddy to see their badges.") : "Pray together with friends and cousins!"),
+      racing ? el("div",{class:"seg", role:"group", "aria-label":"Race period"},
+        ["week","month"].map(p => el("button",{"aria-pressed":String(boardPeriod===p), onclick:()=>{boardPeriod=p; render();}}, p==="week"?"This week":"This month"))) : null),
+    allKidsCard(),
+    msg ? el("div",{class:"race-msg"}, img(msg[0]), el("span",{}, msg[1])) : null,
+    el("div",{class:"race"}, rows.map(r => {
+      const g = gradeFor(r.sc?.pct ?? null), isMe = r.uid === me.uid, top = Math.max(1, ...rows.map(x => x.points));
+      const medal = r.place && r.place <= 3 ? img(`medal${r.place}`,"",`${ordinal(r.place)} place`) : (r.place || "–");
+      return el("div",{class:`rrow ${isMe?"me":""}`, role:"button", tabindex:"0", "aria-label":`See ${isMe ? "your" : r.p.name + "'s"} profile and badges`,
+          onclick:e => { if (!e.target.closest(".rm, .nudge-btn")) openBuddy(r.uid); }, onkeydown:e => { if (e.key === "Enter") openBuddy(r.uid); }},
+        el("div",{class:"rank"}, medal),
+        avatar(r.p, 48),
+        el("div",{style:"min-width:0"},
+          el("div",{class:"rname"}, r.p.name, isMe ? el("span",{class:"you"},"YOU") : null,
+            !isMe && view.editRace ? el("button",{class:"linkbtn rm", onclick:()=>removeRacer(r.uid)},"remove") : null,
+            !isMe && !view.editRace ? el("button",{class:"nudge-btn", "aria-label":`Send ${r.p.name} a nudge`, onclick:()=>nudges?.openSend(r.uid)}, img("e-wave")) : null),
+          el("div",{class:"track"}, el("i",{style:`width:${r.points / top * 100}%;background-color:${g?.color || "var(--sky)"}`}))),
+        el("div",{class:"rpct"}, el("b",{class:"num"}, r.points ? `${fmtPts(r.points)} pts` : "–"),
+          el("span",{}, `${r.today}/5 today`), r.pending ? el("span",{}, `${r.pending} waiting OK`) : null));
+    })),
+    el("div",{class:"invite-box"},
+      el("b",{}, "Invite a Salah Buddy"),
+      el("div",{class:"small muted"}, "Pray together and cheer each other on. When they tap your link and join, you'll see each other here."),
+      el("div",{class:"invite-btns"},
+        el("a",{class:"btn wa", href:`https://wa.me/?text=${encodeURIComponent(inviteText())}`, target:"_blank", rel:"noopener"}, "WhatsApp"),
+        navigator.share ? el("button",{class:"btn ghost", onclick:share},"Other apps") : null,
+        el("button",{class:"btn ghost", onclick:copyLink},"Copy link"))),
+    racing ? el("button",{class:"linkbtn", style:"align-self:flex-start", onclick:()=>{view.editRace=!view.editRace; render();}}, view.editRace ? "Done" : "Remove a buddy") : null);
+}
+
+// Days a grown-up still needs to look at: unapproved days (last 31) with Prayed or Late ticks.
+// Missed/Excused need no approval, so days with only those never show up here.
+function toCheck(){
+  const today = todayStr(), out = [];
+  let from = addDays(today, -30); const start = firstDate(me.uid); if (start > from) from = start;
+  for (let d = from; d <= today; d = addDays(d,1)) if (unapprovedTicks(me.uid, d).length) out.push(d);
+  return out.reverse();
+}
+function parentCheck(){
+  if (!requireConfirm) return el("section",{class:"panel stack parent-panel"},
+    secTitle("lock", "Grown-up tools", "Prayers count straight away right now, so there's nothing to confirm. You can still fix any tick below."),
+    asParent ? null : parentMsgBox(),
+    pinButtons());
+  const days = toCheck(), qz = pendingQaza(me.uid);
+  const pname = k => PRAYERS.find(p => p.k === k)?.en || k;
+  return el("section",{class:"panel stack parent-panel"},
+    asParent ? null : parentMsgBox(),
+    qz.length ? el("div",{class:"stack", style:"gap:10px"},
+      el("div",{class:"row", style:"justify-content:space-between"},
+        secTitle("sparkles", "Prayers done later", `${me.name} says these missed or excused prayers were prayed later.`),
+        qz.length > 1 ? el("button",{class:"btn approve sm", onclick:()=>{ setQaza(qz, "ok"); toast(`${qz.length} confirmed`,"check"); }}, `Confirm all ${qz.length}`) : null),
+      el("div",{class:"check-list"}, qz.map(x => el("div",{class:"check-row"},
+        el("span",{}, `${parse(x.d).toLocaleDateString("en-GB",{weekday:"short", day:"numeric", month:"short"})} · ${pname(x.p)}`),
+        el("span",{class:"small muted"}, statusOf(me.uid, x.d, x.p) === "e" ? "was excused" : "was missed"),
+        el("button",{class:"btn ghost sm", onclick:()=>setQaza([x], null)},"No"),
+        el("button",{class:"btn approve sm", onclick:()=>setQaza([x], "ok")},"Confirm"))))) : null,
+    el("div",{class:"row", style:"justify-content:space-between"},
+      secTitle("check", `Confirm ${me.name}'s prayers`, days.length ? "Check the Prayed and Late ticks, fix anything wrong, then confirm. Prayers not ticked yet stay open for the child." : "All caught up. Every recent prayer is confirmed."),
+      days.length > 1 ? el("button",{class:"btn approve sm", onclick:()=>{ approveDays(days); toast(`${days.length} days confirmed`,"check"); }}, `Confirm all ${days.length}`) : null),
+    days.length ? el("div",{class:"check-list"}, days.map(d => el("div",{class:"check-row"},
+      el("button",{class:"linkbtn", style:"text-align:left;color:var(--ink)", onclick:()=>{ view.sel = d; render(); document.getElementById("day")?.scrollIntoView({behavior:"smooth"}); }}, parse(d).toLocaleDateString("en-GB",{weekday:"short", day:"numeric", month:"short"})),
+      dots(dayStatuses(me.uid, d)),
+      el("span",{class:"small muted num"}, `${unapprovedTicks(me.uid,d).length} to check`),
+      el("button",{class:"btn approve sm", onclick:()=>approveDays([d])},"Confirm")))) : null,
+    pinButtons());
+}
+// The child's PIN is their password, so it can only be changed from the child's own login.
+const pinButtons = () => el("div",{class:"row"},
+  asParent ? null : el("button",{class:"btn ghost sm", onclick:openChangeKidPin},"Change child's PIN"),
+  el("button",{class:"btn ghost sm", onclick:openChangeParentPin},"Change grown-up PIN"),
+  asParent ? el("span",{class:"small muted"},"To change your child's PIN, log in as your child and open Grown-up.") : null);
+function agoText(ms){
+  const m = Math.round((Date.now() - ms) / 60000);
+  if (m < 2) return "just now"; if (m < 60) return `${m} minutes ago`;
+  const h = Math.round(m / 60); if (h < 24) return `${h} hour${h > 1 ? "s" : ""} ago`;
+  const d = Math.round(h / 24); return d === 1 ? "yesterday" : `${d} days ago`;
+}
+// Top of the grown-up view: who, today at a glance, week and month, and the message box.
+function parentHome(){
+  const uid = me.uid, pt = curPrayerDay(), st = dayStatuses(uid, pt), done = st.filter(isDone).length, age = ageOf(me.dob), sk = streak(uid);
+  const mini = (label, sc) => { const g = gradeFor(sc?.pct ?? null);
+    return el("div",{class:"pg-tile"}, el("div",{class:"eyebrow"}, label), el("div",{class:"grade"}, img(g?.icon || "star"), g ? `${g.en} · ${sc.pct}%` : "No ticks yet"),
+      el("div",{class:"track"}, el("i",{style:`width:${sc?.pct ?? 0}%;background-color:${g?.color || "var(--none)"}`}))); };
+  return el("section",{class:"panel stack"},
+    el("div",{class:"toolbar"}, el("span",{class:"pb-badge"},"GROWN-UP VIEW"), el("span",{style:"flex:1"}),
+      el("button",{class:"linkbtn", onclick:openProfile},"Edit profile"), el("button",{class:"linkbtn", onclick:logout},"Log out")),
+    el("div",{class:"kid-hero"}, avatar(me, 96),
+      el("div",{style:"min-width:0"},
+        el("div",{class:"hello"}, me.name),
+        el("div",{class:"uname"}, `@${me.username}`, age != null ? ` · Age ${age}` : "", ` · ${loc().city}`),
+        el("div",{class:"small muted", style:"margin-top:4px"}, me.lastSeen ? `Last opened the app ${agoText(me.lastSeen)}` : "Hasn't opened the app yet"),
+        sk ? el("div",{class:"rank-pill streak-pill"}, img("fire"), `${sk}-day streak`) : null,
+        me.parentMsg?.text ? el("div",{class:"small muted"}, `Your last message was ${me.parentMsg.seen ? "read ✓" : "not read yet"}`) : null)),
+    el("div",{class:"pg-today"}, el("b",{}, `Today: ${done} of 5 prayers`),
+      el("div",{class:"pg-chips"}, PRAYERS.map((p, i) => el("span",{class:`pg-chip ${st[i] ? "s-" + st[i] : ""}`}, `${p.en} · ${st[i] ? STATUS[st[i]].short : "not yet"}`)))),
+    el("div",{class:"pg-grid"}, mini("This week", periodScore(uid, "week")), mini("This month", periodScore(uid, "month"))),
+    parentMsgBox());
+}
+
+function renderCalendar(){
+  const uid = me.uid, y = view.calY, m = view.calM, today = todayStr();
+  const first = new Date(y, m, 1), days = new Date(y, m+1, 0).getDate();
+  const [ms, me2] = monthBounds(y, m);
+  const now = new Date(), atCurrent = y === now.getFullYear() && m === now.getMonth();
+  const cells = [];
+  for (let i=0;i<first.getDay();i++) cells.push(el("div",{class:"cell blank", "aria-hidden":"true"}));
+  for (let d=1; d<=days; d++){
+    const s = ymd(new Date(y, m, d)), st = dayStatuses(uid, s), future = s > today, full = fullDay(st) && !future;
+    cells.push(el("button",{
+      class:`cell ${s===today?"today":""} ${s===view.sel?"sel":""} ${future?"future":""} ${full?"full":""}`,
+      disabled: future, "aria-label": `${prettyDate(s)}${future?"":`, ${prayedCount(st)} prayed`}`,
+      onclick:()=>{ view.sel = s; render(); document.getElementById("day")?.scrollIntoView({behavior:"smooth"}); }
+    }, full ? img("star","cstar") : null, el("span",{class:"d num"}, d), future ? null : dots(st)));
+  }
+  const shift = n => { const d = new Date(view.calY, view.calM + n, 1); view.calY = d.getFullYear(); view.calM = d.getMonth(); render(); };
+  return el("section",{class:"panel", id:"calendar"},
+    el("div",{class:"cal-head"},
+      el("div",{class:"sec-title"}, img("p-dhuhr"), el("div",{}, el("h2",{}, monthName(y, m)), el("div",{style:"margin-top:4px"}, gradeChip(score(uid, ms, me2)?.pct ?? null)))),
+      el("div",{class:"cal-nav"},
+        el("button",{onclick:()=>shift(-1), "aria-label":"Previous month"},"‹"),
+        el("button",{onclick:()=>shift(1), "aria-label":"Next month", disabled:atCurrent},"›"))),
+    el("div",{class:"cal"}, WEEKDAYS.map(w => el("div",{class:"wd"}, w)), cells),
+    el("div",{class:"legend"},
+      el("span",{}, el("i",{class:"dot p"}), "On time"), el("span",{}, el("i",{class:"dot l"}), "Late"),
+      el("span",{}, el("i",{class:"dot m"}), "Missed"), el("span",{}, el("i",{class:"dot e"}), "Excused"),
+      el("span",{}, el("i",{class:"dot"}), "Not ticked")),
+    el("p",{class:"small muted", style:"margin-top:8px"},"A star means all 5 prayers were done that day. Tap any past day to see or fix it."));
+}
+function history(){
+  return el("section",{class:"panel stack"},
+    secTitle("medal1", asParent ? "Month by month" : "My Months","Every month is saved. A new month starts a fresh score."),
+    el("div",{class:"tbl-wrap"}, el("table",{class:"hist"}, el("tbody",{}, monthsFor(me.uid).map(m => el("tr",{},
+      el("td",{}, el("button",{onclick:()=>{view.calY=m.y; view.calM=m.m; render(); document.getElementById("calendar")?.scrollIntoView({behavior:"smooth"});}}, monthName(m.y, m.m))),
+      el("td",{class:"num small muted"}, m.sc.pct==null ? "" : `${m.sc.counts.p + m.sc.counts.l} prayed`),
+      el("td",{}, gradeChip(m.sc.pct))))))));
+}
+function gradeGuide(){
+  return el("section",{class:"panel"},
+    secTitle("gem","How grades work"),
+    el("p",{class:"small muted", style:"margin:10px 0"},"Prayed on time = 1 point. Prayed late, still the same day = ¾ point. Missed = 0. Excused (when you have a valid excuse) doesn't count against you. I did it later, once a grown-up confirms: a missed prayer = ½ point, an excused prayer = 1 point. Bonus prayers (Tahajjud, Ishraq) add ½ point each, up to 100%. Past days that weren't ticked count as missed. " + (requireConfirm ? "A green ✓✓ means a grown-up confirmed it. With your Salah Buddies and in the all-kids ranking, only confirmed prayers count; your own scores show all your ticks." : "Every prayer you tick counts straight away.")),
+    el("table",{class:"guide"}, el("tbody",{}, GRADES.map((g,i) => el("tr",{},
+      el("td",{}, el("span",{class:`chip g-${g.key}`}, img(g.icon,"ic"), g.en)),
+      el("td",{}, i===0 ? `${g.min}% and above` : `${g.min}–${GRADES[i-1].min-1}%`))))));
+}
+
+// ---------- account actions ----------
+async function logout(){
+  games?.stop(); nudges?.stop(); petShown = null; unsubAll(); me = null; people.clear(); marks.clear(); parentMode = false; parentHash = null;
+  asParent = false; parentLinkBad = false; parentPinPlain = null; marksLoaded = false;
+  view = {sel:null, calY:0, calM:0, authTab:"login", editRace:false, loginAs:view.loginAs};
+  await signOut(auth); render(); scrollTo(0,0);
+}
+function openAvatar(){
+  let av = AVATARS[me.avatar] ? me.avatar : "cat";
+  modal(close => el("div",{class:"stack"},
+    el("h2",{},"Pick your picture"),
+    avatarPicker(av, key => av = key),
+    el("div",{class:"actions"},
+      el("button",{type:"button", class:"btn ghost", onclick:close},"Cancel"),
+      el("button",{type:"button", class:"btn primary", onclick: async () => {
+        try { await updateDoc(doc(db, "users", me.uid), {avatar:av}); close(); toast(`Nice! You're ${AVATARS[av].name} now.`, av); }
+        catch { toast("Couldn't save the picture. Try again.","lock"); }
+      }},"Save"))));
+}
+function openProfile(){
+  modal(close => {
+    const name = el("input",{id:"pr-name", maxlength:"24", value:me.name || ""});
+    const dob = el("input",{id:"pr-dob", type:"date", max:todayStr(), min:"2000-01-01", value:me.dob || ""});
+    const city = el("input",{id:"pr-city", maxlength:"40", value:loc().city});
+    const country = el("input",{id:"pr-country", maxlength:"40", value:loc().country});
+    const err = el("div",{class:"err"}), save = el("button",{class:"btn primary", type:"submit"},"Save");
+    return el("form",{class:"stack", onsubmit: async e => {
+      e.preventDefault();
+      const n = name.value.trim(), c = city.value.trim(), k = country.value.trim();
+      if (!n) return err.textContent = "Type a name.";
+      if (!c || !k) return err.textContent = "Type a city and country for prayer times.";
+      save.disabled = true; save.textContent = "Checking…";
+      if (c !== loc().city || k !== loc().country){
+        try { await loadTimes(c, k); }
+        catch { save.disabled = false; save.textContent = "Save"; return err.textContent = "Couldn't find prayer times for that city. Check the spelling, e.g. Muscat, Oman."; }
+      }
+      try { await updateDoc(doc(db, "users", me.uid), {name:n, dob:dob.value || null, city:c, country:k}); close(); toast("Profile saved", "check"); }
+      catch { save.disabled = false; save.textContent = "Save"; err.textContent = "Couldn't save. Try again."; }
+    }},
+      el("div",{class:"sec-title"}, img("cake"), el("h2",{},"My profile")),
+      el("div",{class:"field"}, el("label",{for:"pr-name"},"Name on screen"), name),
+      el("div",{class:"field"}, el("label",{for:"pr-dob"},"Date of birth"), dob),
+      el("div",{class:"two"},
+        el("div",{class:"field"}, el("label",{for:"pr-city"},"City"), city),
+        el("div",{class:"field"}, el("label",{for:"pr-country"},"Country"), country)),
+      el("p",{class:"small muted"},"Prayer times are worked out for your city and change through the year."),
+      err,
+      el("div",{class:"actions"}, el("button",{type:"button", class:"btn ghost", onclick:close},"Cancel"), save));
+  });
+}
+function pinForm({title, intro, confirm, label, submitLabel, onOk}){
+  modal(close => {
+    const pin = pinInput("pf-pin"), pin2 = confirm ? pinInput("pf-pin2") : null;
+    const err = el("div",{class:"err"});
+    const form = el("form",{class:"stack", onsubmit: async e => {
+      e.preventDefault();
+      if (!/^\d{4}$/.test(pin.value)) return err.textContent = "The PIN needs exactly 4 numbers.";
+      if (confirm && pin.value !== pin2.value) return err.textContent = "The two PINs don't match.";
+      const m = await onOk(pin.value);
+      if (m){ err.textContent = m; pin.value = ""; if (pin2) pin2.value = ""; pin.focus(); } else close();
+    }},
+      el("div",{class:"sec-title"}, img("lock"), el("h2",{}, title)), el("p",{class:"small muted"}, intro),
+      el("div",{class:"field"}, el("label",{for:"pf-pin"}, label), pin),
+      confirm ? el("div",{class:"field"}, el("label",{for:"pf-pin2"},"Type it again"), pin2) : null,
+      err,
+      el("div",{class:"actions"}, el("button",{type:"button", class:"btn ghost", onclick:close},"Cancel"), el("button",{class:"btn primary", type:"submit"}, submitLabel)));
+    if (!confirm) pin.addEventListener("input", () => { if (pin.value.length === 4) form.requestSubmit(); });
+    return form;
+  });
+}
+async function loadParentHash(){
+  if (parentHash) return parentHash;
+  const s = await getDoc(doc(db, "users", me.uid, "private", "settings"));
+  return parentHash = s.exists() ? s.data().parentPinHash : null;
+}
+async function openParent(){
+  if (parentMode) return toast("Grown-up mode is already on. Tap Exit at the top to leave it.", "lock");
+  let h; try { h = await loadParentHash(); } catch { return toast("No internet. Try again.", "lock"); }
+  if (!h) return pinForm({title:"Set a grown-up PIN", intro:"Choose a PIN only parents know.", confirm:true, label:"New grown-up PIN", submitLabel:"Save",
+    onOk: async p => { try { const nh = await sha(`salah-parent:${me.uid}:${p}`); await setDoc(doc(db,"users",me.uid,"private","settings"), {parentPinHash:nh}); parentHash = nh; parentPinPlain = p; parentMode = true; render(); linkParentLogin(me, p); } catch { return "Couldn't save. Try again."; } }});
+  pinForm({title:"Grown-up check", intro:"Parents can confirm their child's prayers, fix ticks and change PINs.", label:"Grown-up PIN", submitLabel:"Open",
+    onOk: async p => { if ((await sha(`salah-parent:${me.uid}:${p}`)) !== h) return "That's not the grown-up PIN."; parentPinPlain = p; parentMode = true; toast("Grown-up mode on","check"); render(); linkParentLogin(me, p); }});
+}
+function openChangeKidPin(){
+  pinForm({title:`New PIN for ${me.name}`, intro:"The child will use this new PIN to log in.", confirm:true, label:"New child PIN", submitLabel:"Save PIN",
+    onOk: async p => {
+      try { await updatePassword(auth.currentUser, loginPass(p)); toast("PIN changed","check"); }
+      catch (x) { return x?.code === "auth/requires-recent-login" ? "For safety, log out and back in, then change the PIN straight away." : "Couldn't change the PIN. Try again."; }
+    }});
+}
+function openChangeParentPin(){
+  pinForm({title:"New grown-up PIN", intro:"Choose a PIN only parents know.", confirm:true, label:"New grown-up PIN", submitLabel:"Save PIN",
+    onOk: async p => {
+      try {
+        if (asParent) await updatePassword(auth.currentUser, parentPass(p));      // the grown-up login's own password
+        const nh = await sha(`salah-parent:${me.uid}:${p}`); await setDoc(doc(db,"users",me.uid,"private","settings"), {parentPinHash:nh}); parentHash = nh;
+        if (!asParent){ linkParentLogin(me, p, parentPinPlain); parentPinPlain = p; }
+        toast("Grown-up PIN changed","check");
+      } catch (x) { return x?.code === "auth/requires-recent-login" ? "For safety, log out and back in, then change the PIN straight away." : "Couldn't save. Try again."; }
+    }});
+}
+
+// ---------- boot ----------
+paintHeaderDates();
+// Every minute: refresh the clock-driven parts (Now/Next bar, which prayers are open).
+setInterval(() => {
+  const before = document.getElementById("gdate").textContent; paintHeaderDates();
+  if (document.getElementById("gdate").textContent !== before && me){ if (!asParent) syncRacers(); refreshTimes(true); }
+  if (me && !$modal.firstChild) render();
+}, 60000);
+document.getElementById("guide-fab").addEventListener("click", () => openGuide({el, img}));
+try {
+  const cfg = await fetch("/__/firebase/init.json").then(r => { if (!r.ok) throw 0; return r.json(); });
+  const app = initializeApp(cfg); fbCfg = cfg;
+  auth = getAuth(app); db = getFirestore(app);
+  nudges = initNudges({app, dbURL: cfg.databaseURL || "https://family-salah-tracker-765ed-default-rtdb.europe-west1.firebasedatabase.app", me:() => me, people, el, img, avatar, toast, modal, rerender:() => render()});
+  games = initGames({app, dbURL: cfg.databaseURL || "https://family-salah-tracker-765ed-default-rtdb.europe-west1.firebasedatabase.app",
+    me: () => me, people, el, img, avatar, toast, confetti, rerender: () => render()});
+  onSnapshot(doc(db, "config", "app"), s => { requireConfirm = !!s.data()?.requireConfirm; if (me){ publishScore(); render(); } }, () => {});
+  if (location.pathname.startsWith("/admin")){
+    document.getElementById("guide-fab").hidden = true;
+    const { startAdmin } = await import("/admin.js");
+    startAdmin({auth, db, el, img, avatar, toast, $app});
+  } else onAuthStateChanged(auth, user => {
+    if (user && !me) startSession(user);
+    render();
+  });
+} catch {
+  show(el("div",{class:"panel"}, el("h2",{},"Almost ready"), el("p",{class:"muted", style:"margin-top:6px"},"This site needs to be opened from its web address after it's been uploaded to Firebase.")));
+}
+</script>
+</body>
+</html>

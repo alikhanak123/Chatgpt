@@ -1,0 +1,5 @@
+3D animal models (from poly.pizza):
+- Shiba Inu (dog.glb), Husky, Fox, Horse (pony.glb), Frog: by Quaternius, CC0 / Public Domain.
+- Rabbit (rabbit.glb): by Sherkiz, CC-BY 3.0: https://poly.pizza/m/Km89u3twcR
+- Cat (cat.glb): by J-Toastie, CC-BY 3.0: https://poly.pizza/m/DJ9rpAhrh3 (eyes and walk added in petrig.js)
+- Scarlet macaw (macaw.glb): by Poly by Google, CC-BY 3.0: https://poly.pizza/m/dfNjMLtO0pd (skeleton and animation added in petrig.js)
