@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "prayertracker",
+    "site": "salah-preview-765ed",
     "public": ".",
     "ignore": [
       "firebase.json",

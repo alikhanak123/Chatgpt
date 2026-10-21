@@ -18,45 +18,91 @@ concurrency:
 jobs:
   preview:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Publish demo to preview channel only
+      - name: Publish only the separate demo website
         id: publish
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/preview-firebase-key.json
+          DEMO_SITE: salah-preview-765ed
         shell: bash
         run: |
           set -euo pipefail
+          node -e 'const c=require("./design-preview/firebase.json"); if(c.hosting.site!=="salah-preview-765ed" || c.firestore || c.database) throw Error("Refusing to deploy outside the isolated demo site")'
           test -n "$FIREBASE_SERVICE_ACCOUNT" || { echo '::error::Missing FIREBASE_SERVICE_ACCOUNT repository secret.'; exit 1; }
           umask 077
           printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$GOOGLE_APPLICATION_CREDENTIALS"
           trap 'rm -f "$GOOGLE_APPLICATION_CREDENTIALS"' EXIT
-          npx -y firebase-tools@latest hosting:channel:deploy graphics-review \
-            --expires 7d \
+          npx -y firebase-tools@latest hosting:sites:list --project family-salah-tracker-765ed --non-interactive --json > "$RUNNER_TEMP/hosting-sites.json"
+          node <<'JS'
+          const fs=require('fs');
+          const result=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/hosting-sites.json','utf8'));
+          if(result.status!=='success')throw Error('Could not list hosting sites');
+          let exists=false;
+          function visit(v){if(v&&typeof v==='object'){if(typeof v.name==='string'&&v.name.endsWith('/sites/'+process.env.DEMO_SITE))exists=true;Object.values(v).forEach(visit);}}
+          visit(result.result);
+          fs.writeFileSync(process.env.RUNNER_TEMP+'/demo-site-exists',exists?'yes':'no');
+          JS
+          if [ "$(cat "$RUNNER_TEMP/demo-site-exists")" = no ]; then
+            npx -y firebase-tools@latest hosting:sites:create "$DEMO_SITE" --project family-salah-tracker-765ed --non-interactive
+          fi
+          npx -y firebase-tools@latest deploy --only hosting \
             --config design-preview/firebase.json \
             --project family-salah-tracker-765ed \
             --non-interactive --json > "$RUNNER_TEMP/preview-deploy-result.json"
           node <<'JS'
-          const fs = require('fs');
-          const result = JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP + '/preview-deploy-result.json', 'utf8'));
-          if (result.status !== 'success') throw new Error('Preview deployment did not succeed');
-          const urls = [];
-          function find(value) {
-            if (typeof value === 'string' && /^https:\/\/prayertracker--graphics-review-[a-z0-9-]+\.web\.app\/?$/.test(value)) urls.push(value);
-            if (value && typeof value === 'object') Object.values(value).forEach(find);
-          }
-          find(result.result);
-          if (!urls.length) throw new Error('Could not find the isolated Firebase preview URL');
-          const status = {url: urls[0], commit: process.env.GITHUB_SHA, deployed_at: new Date().toISOString(), expires_in: '7 days', sample_data_only: true};
-          fs.writeFileSync(process.env.RUNNER_TEMP + '/preview-status.json', JSON.stringify(status, null, 2) + '\n');
-          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Isolated design preview\n\n${status.url}\n\nSample information only. Live hosting and databases unchanged. Expires in 7 days.\n`);
-          console.log('Preview:', status.url);
+          const fs=require('fs');
+          const result=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/preview-deploy-result.json','utf8'));
+          if(result.status!=='success')throw Error('Demo deployment did not succeed');
+          const status={url:'https://salah-preview-765ed.web.app',alternate_url:'https://salah-preview-765ed.firebaseapp.com',commit:process.env.GITHUB_SHA,deployed_at:new Date().toISOString(),sample_data_only:true,site:'salah-preview-765ed'};
+          fs.writeFileSync(process.env.RUNNER_TEMP+'/preview-status.json',JSON.stringify(status,null,2)+'\n');
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,`## Separate demo website\n\n${status.url}\n\nAlternate: ${status.alternate_url}\n\nProduction website and databases are unchanged.\n`);
           JS
-      - name: Record preview link on separate status branch
+      - name: Install browser verification tool
+        run: npm install --prefix "$RUNNER_TEMP/preview-browser" --no-audit --no-fund playwright@1.58.2
+      - name: Verify public page and 3D pet from external browser
+        id: verify
+        shell: bash
+        run: |
+          export PREVIEW_CHROME="$(command -v google-chrome || command -v chromium || true)"
+          node <<'JS'
+          const fs=require('fs');
+          const file=process.env.RUNNER_TEMP+'/preview-status.json';
+          const status=JSON.parse(fs.readFileSync(file,'utf8'));
+          (async()=>{
+            const check={http:{},browser:false};status.public_check=check;
+            let browser;
+            try{
+              for(const url of [status.url,status.alternate_url]){
+                const r=await fetch(url,{signal:AbortSignal.timeout(30000)});
+                check.http[url]=r.status;
+                const html=await r.text();
+                if(!r.ok||!html.includes('Peaches'))throw Error(`Unexpected demo response from ${url}: ${r.status}`);
+              }
+              const {chromium}=require(process.env.RUNNER_TEMP+'/preview-browser/node_modules/playwright');
+              browser=await chromium.launch({headless:true,executablePath:process.env.PREVIEW_CHROME||undefined,args:['--no-sandbox','--disable-dev-shm-usage','--enable-unsafe-swiftshader']});
+              const page=await browser.newPage({viewport:{width:390,height:844},reducedMotion:'reduce'});
+              const errors=[];page.on('pageerror',e=>errors.push(e.message));
+              await page.goto(status.url,{waitUntil:'networkidle',timeout:60000});
+              await page.waitForFunction(()=>window.petPreview?.state.ready,{},{timeout:60000});
+              const pet=await page.evaluate(()=>window.petPreview.state);
+              if(pet.eyes!==2)throw Error('Updated pony did not load with both eyes');
+              await page.locator('#walk-button').click();
+              await page.waitForFunction(d=>window.petPreview.state.distance>d+.1,pet.distance,{timeout:30000});
+              if(errors.length)throw Error(errors.join('; '));
+              check.browser=true;check.pony_eyes=pet.eyes;check.walking=true;check.verified_at=new Date().toISOString();
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,'\nBoth public addresses returned HTTP 200. Chrome loaded the updated pony with both eyes and verified walking.\n');
+            }catch(e){check.error=e.message;console.error('Public preview check:',e.message);process.exitCode=1;}
+            finally{await browser?.close();fs.writeFileSync(file,JSON.stringify(status,null,2)+'\n');}
+          })();
+          JS
+      - name: Record preview link and verification on separate status branch
+        if: always() && steps.publish.outcome == 'success'
         env:
           STATUS_FILE: ${{ runner.temp }}/preview-status.json
         shell: bash
@@ -70,5 +116,5 @@ jobs:
           if git fetch origin refs/heads/design-preview-status; then
             PARENT=(-p FETCH_HEAD)
           fi
-          COMMIT=$(printf 'Record isolated design preview URL\n' | git commit-tree "$TREE" "${PARENT[@]}")
+          COMMIT=$(printf 'Record separate demo URL and public verification\n' | git commit-tree "$TREE" "${PARENT[@]}")
           git push origin "$COMMIT:refs/heads/design-preview-status"
