@@ -16,6 +16,9 @@ export const GAMES = {
   memory: {name:"Memory Match", icon:"cards", blurb:"Find matching pairs. Most pairs wins."},
   snakes: {name:"Snakes & Ladders", icon:"snake", blurb:"Roll the dice! 2 to 4 players.", multi:true},
   hockey: {name:"Air Hockey", icon:"hockey",   blurb:"Live! Slide your paddle and score goals."},
+  rps:    {name:"Rock Paper Scissors", icon:"g-scissors", blurb:"First to 3 wins. Can you beat the computer?", solo:true},
+  words:  {name:"Balloon Words", icon:"balloon", blurb:"Guess the word before the balloons pop!", solo:true},
+  quiz:   {name:"Salah Quiz", icon:"quiz", blurb:"How much do you know about prayer?", solo:true},
 };
 const C4_COLS = 7, C4_ROWS = 6;
 const HOCKEY_WIN = 5;
@@ -154,7 +157,7 @@ export function initGames(ctx){
     const me = ctx.me(); if (!me) return null;
     const friends = (me.friends||[]).filter(f => ctx.people.has(f));
     if (!pick.friend || !friends.includes(pick.friend)) pick.friend = friends[0] || null;
-    if (!friends.length) pick.mode = "cpu";
+    if (!friends.length || GAMES[pick.type]?.solo) pick.mode = "cpu";
     const head = el("div",{class:"sec-title"}, img("game"), el("div",{}, el("h2",{},"Games"), el("div",{class:"small muted"},"Play with your Salah Buddies or against the computer.")));
     const online = ready && !broken;
     const entries = online ? Object.entries(inbox).sort((a,b) => (b[1].ts||0) - (a[1].ts||0)) : [];
@@ -204,7 +207,7 @@ export function initGames(ctx){
         (e.status === "playing" || e.status === "joined" || (e.status === "sent" && GAMES[e.type]?.multi)) ? el("button",{class:"btn primary sm", onclick:()=>openGame(gid)},"Open") : null))) : null,
       el("div",{class:"eyebrow"},"Pick a game"),
       gameCards,
-      friends.length ? modeSeg : el("div",{class:"small muted"},"Invite a Salah Buddy to play together online. For now, play vs the computer!"),
+      GAMES[pick.type].solo ? null : friends.length ? modeSeg : el("div",{class:"small muted"},"Invite a Salah Buddy to play together online. For now, play vs the computer!"),
       choose);
   }
 

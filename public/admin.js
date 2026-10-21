@@ -6,7 +6,7 @@ const ADMIN_DOMAIN = "admins.salah-tracker.example";
 const PRAYERS = ["fajr","dhuhr","asr","maghrib","isha"];
 
 export function startAdmin({auth, db, el, img, avatar, toast, $app}){
-  let state = {kids:[], marks:new Map(), activity:[], loading:true, error:null, q:"", sort:"seen", open:null, requireConfirm:false};
+  let state = {kids:[], marks:new Map(), activity:[], loading:true, error:null, q:"", sort:"seen", open:null, requireConfirm:false, chatOff:false};
   const show = (...p) => $app.replaceChildren(...p.filter(Boolean));
   const pad = n => String(n).padStart(2,"0");
   const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -57,7 +57,8 @@ export function startAdmin({auth, db, el, img, avatar, toast, $app}){
       state.kids = us.docs.map(d => ({uid:d.id, ...d.data()}));
       state.marks = new Map(ms.docs.map(d => [d.id, d.data()]));
       state.activity = act.docs.map(d => d.data());
-      state.requireConfirm = !!(await getDoc(doc(db, "config", "app")).catch(() => null))?.data()?.requireConfirm;
+      const cfgDoc = (await getDoc(doc(db, "config", "app")).catch(() => null))?.data();
+      state.requireConfirm = !!cfgDoc?.requireConfirm; state.chatOff = !!cfgDoc?.chatOff;
       state.error = null;
     } catch (x) {
       state.error = x?.code === "permission-denied" ? "not-admin" : "load";
@@ -121,6 +122,13 @@ export function startAdmin({auth, db, el, img, avatar, toast, $app}){
           try { await setDoc(doc(db, "config", "app"), {requireConfirm: !state.requireConfirm}, {merge:true}); state.requireConfirm = !state.requireConfirm; toast(`Grown-up confirmation is now ${state.requireConfirm ? "ON" : "OFF"}`, "check"); render(); }
           catch { toast("Couldn't change the setting. Try again.", "lock"); }
         }}, state.requireConfirm ? "ON · tap to turn off" : "OFF · tap to turn on")),
+      el("section",{class:"panel row", style:"justify-content:space-between"},
+        el("div",{style:"min-width:0;flex:1"}, el("b",{}, "Buddy chat"),
+          el("div",{class:"small muted"}, state.chatOff ? "OFF: kids can't chat. Stickers still work." : "ON: kids can chat with their Salah Buddies. Links, emails and phone numbers are blocked; grown-ups can read their child's chats.")),
+        el("button",{class:`btn ${state.chatOff ? "ghost" : "approve"}`, role:"switch", "aria-checked":String(!state.chatOff), onclick: async () => {
+          try { await setDoc(doc(db, "config", "app"), {chatOff: !state.chatOff}, {merge:true}); state.chatOff = !state.chatOff; toast(`Buddy chat is now ${state.chatOff ? "OFF" : "ON"}`, "check"); render(); }
+          catch { toast("Couldn't change the setting. Try again.", "lock"); }
+        }}, state.chatOff ? "OFF · tap to turn on" : "ON · tap to turn off")),
       el("section",{class:"scores admin-stats"}, stat(kids.length, "Kids", "av-student"), stat(activeToday, "Active today", "clock"), stat(newWeek, "New this week", "sparkles"), stat(ticksToday, "Prayers ticked today", "check"), stat(waiting, "Waiting to confirm today", "lock")),
       el("section",{class:"panel stack"},
         el("div",{class:"row", style:"justify-content:space-between"}, el("h2",{},"All kids"),

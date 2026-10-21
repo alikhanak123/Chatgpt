@@ -14,7 +14,8 @@ export function openSolo(type, {level = "medium", bots = 1} = {}, ctx){
   const later = (fn, ms) => { const t = setTimeout(() => { if (!closed) fn(); }, ms); stopFns.push(() => clearTimeout(t)); };
   const close = () => { closed = true; stopFns.forEach(f => f()); stopFns = []; root.replaceChildren(); document.body.classList.remove("gaming"); };
   document.body.classList.add("gaming");
-  const TITLE = {ttt:["Tic-Tac-Toe","xmark"], c4:["Four in a Row","disc-red"], memory:["Memory Match","cards"], snakes:["Snakes & Ladders","snake"], hockey:["Air Hockey","hockey"], chess:["Chess","chess"]}[type];
+  const TITLE = {ttt:["Tic-Tac-Toe","xmark"], c4:["Four in a Row","disc-red"], memory:["Memory Match","cards"], snakes:["Snakes & Ladders","snake"], hockey:["Air Hockey","hockey"], chess:["Chess","chess"],
+    rps:["Rock Paper Scissors","g-scissors"], words:["Balloon Words","balloon"], quiz:["Salah Quiz","quiz"]}[type];
   const score = {me:0, cpu:0};
   const pcard = (p, label, sc, active) => el("div",{class:`gs-player ${active ? "active" : ""}`}, avatar(p, 48), el("div",{}, el("b",{}, label), el("div",{class:"gs-score num"}, sc)));
   function frame(status, board, {done = false, again, players, go = false} = {}){
@@ -26,6 +27,129 @@ export function openSolo(type, {level = "medium", bots = 1} = {}, ctx){
       done ? el("div",{class:"actions", style:"justify-content:center"}, el("button",{class:"btn primary", onclick:again},"Play again"), el("button",{class:"btn ghost", onclick:close},"Done")) : null));
   }
   const cheer = w => { if (w === "me"){ score.me++; confetti(); toast("You beat the computer! MashaAllah!", "trophy"); } else if (w === "cpu"){ score.cpu++; toast("The computer won this time. Try again!", "av-robot"); } else toast("It's a draw!", "game"); };
+
+  // ---------- Rock Paper Scissors (first to 3) ----------
+  if (type === "rps"){
+    const MOVES = {rock:{icon:"g-rock", name:"Rock", beats:"scissors"}, paper:{icon:"g-paper", name:"Paper", beats:"rock"}, scissors:{icon:"g-scissors", name:"Scissors", beats:"paper"}};
+    const keys = Object.keys(MOVES), counter = k => keys.find(x => MOVES[x].beats === k);
+    let seen, last, round;
+    const cpuPick = () => {
+      if (level === "easy" || !round) return keys[Math.random()*3|0];
+      if (level === "medium") return Math.random() < .4 ? counter(last) : keys[Math.random()*3|0];
+      const fav = keys.reduce((a, b) => seen[b] > seen[a] ? b : a);       // hard: learns your favourite move
+      return Math.random() < .55 ? counter(fav) : keys[Math.random()*3|0];
+    };
+    const start = () => { score.me = 0; score.cpu = 0; round = 0; last = null; seen = {rock:0, paper:0, scissors:0}; draw(null, null, "Pick one! First to 3 wins."); };
+    function play(k){
+      const c = cpuPick(); seen[k]++; last = k; round++;
+      const r = k === c ? "draw" : MOVES[k].beats === c ? "me" : "cpu";
+      if (r === "me") score.me++; else if (r === "cpu") score.cpu++;
+      const over = score.me >= 3 || score.cpu >= 3;
+      if (over){ if (score.me >= 3){ confetti(); toast("You won the match! MashaAllah!", "trophy"); } else toast("The computer won this time. Try again!", "av-robot"); }
+      draw(k, c, r === "draw" ? `Both picked ${MOVES[k].name}. It's a draw!` : r === "me" ? `${MOVES[k].name} beats ${MOVES[c].name}! Point to you.` : `${MOVES[c].name} beats ${MOVES[k].name}. Point to the computer.`, over);
+    }
+    function draw(k, c, msg, over = false){
+      const hand = (m, who) => el("div",{class:"rps-hand"}, m ? img(MOVES[m].icon) : el("span",{class:"rps-q"},"?"), el("span",{class:"small muted"}, who));
+      frame(over ? (score.me >= 3 ? "You win the match! 🎉" : "Computer wins the match!") : msg,
+        el("div",{class:"rps"}, el("div",{class:"rps-arena", key:round}, hand(k, "You"), el("span",{class:"gs-vs"},"vs"), hand(c, "Computer")),
+          over ? null : el("div",{class:"rps-pick"}, keys.map(m => el("button",{class:"rps-btn", "aria-label":MOVES[m].name, onclick:() => play(m)}, img(MOVES[m].icon), el("b",{}, MOVES[m].name))))),
+        {done:over, again:start, go:!over});
+    }
+    return start();
+  }
+
+  // ---------- Balloon Words: guess the word before the balloons pop ----------
+  if (type === "words"){
+    const WORDS = {
+      easy:[["SUN","It shines in the day"],["MOON","It shines at night"],["STAR","Twinkle, twinkle…"],["CAT","A pet that purrs"],["FISH","It swims in the sea"],["DATE","A sweet fruit from palm trees"],
+        ["BOOK","You read it"],["PRAY","What we do five times a day"],["RAIN","Water falling from clouds"],["CAKE","A birthday treat"],["DUCK","It says quack"],["BIRD","It flies and sings"]],
+      medium:[["MOSQUE","Where we pray together"],["QURAN","The holy book"],["KAABA","We face it when we pray"],["CAMEL","The ship of the desert"],["FAJR","The dawn prayer"],["WUDU","Washing before prayer"],
+        ["OMAN","A country of mountains and sea"],["ZAKAT","Giving to people in need"],["MAKKAH","The city of the Kaaba"],["FALCON","A fast bird of prey"],["DESERT","Sand everywhere!"],["PRAYER","Salah in English"]],
+      hard:[["RAMADAN","The month of fasting"],["MAGHRIB","The sunset prayer"],["TAHAJJUD","A prayer in the night"],["MUSCAT","The capital of Oman"],["SUJOOD","Forehead on the ground"],["ISHRAQ","A prayer after sunrise"],
+        ["MADINAH","The city of the Prophet ﷺ"],["MINARET","The tall tower of a mosque"],["CRESCENT","A thin moon shape"],["GRATEFUL","Saying Alhamdulillah"],["PATIENCE","Sabr"],["KINDNESS","Being nice to everyone"]],
+    };
+    const LIVES = {easy:8, medium:7, hard:6}[level] || 7;
+    let word, hint, guessed, wrong, pool = [];
+    const start = () => { if (!pool.length) pool = [...WORDS[level] || WORDS.medium].sort(() => Math.random() - .5); [word, hint] = pool.pop(); guessed = new Set(); wrong = 0; draw(); };
+    const won = () => [...word].every(ch => guessed.has(ch));
+    function guess(ch){
+      if (guessed.has(ch) || won() || wrong >= LIVES) return;
+      guessed.add(ch); if (!word.includes(ch)) wrong++;
+      if (won()){ score.me++; confetti(); toast("You saved the balloons! MashaAllah!", "balloon"); }
+      else if (wrong >= LIVES){ score.cpu++; toast(`The word was ${word}. Try another one!`, "balloon"); }
+      draw();
+    }
+    const onKey = e => { const k = e.key?.toUpperCase(); if (/^[A-Z]$/.test(k) && root.querySelector(".words")) guess(k); };
+    document.addEventListener("keydown", onKey); stopFns.push(() => document.removeEventListener("keydown", onKey));
+    function draw(){
+      const over = won() || wrong >= LIVES;
+      frame(won() ? "You got it! 🎉" : wrong >= LIVES ? `All popped! The word was ${word}.` : `Hint: ${hint}`,
+        el("div",{class:"words"},
+          el("div",{class:"balloons", "aria-label":`${LIVES - wrong} balloons left`}, Array.from({length:LIVES}, (_, i) => el("span",{class:`balloon ${i >= LIVES - wrong ? "popped" : ""}`, style:`--h:${i * 52}deg`}, img("balloon")))),
+          el("div",{class:"word", "aria-label":"The word"}, [...word].map(ch => el("span",{class:`slot ${guessed.has(ch) || over ? "on" : ""}`}, guessed.has(ch) || over ? ch : ""))),
+          el("div",{class:"keys"}, [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map(ch => el("button",{class:`key ${guessed.has(ch) ? (word.includes(ch) ? "hit" : "miss") : ""}`, disabled:over || guessed.has(ch), onclick:() => guess(ch)}, ch)))),
+        {done:over, again:start, go:!over, players:el("div",{class:"gs-players"}, pcard(me, "Words found", score.me, !over), el("div",{class:"gs-vs"},"vs"), pcard(cpu, "Popped", score.cpu, false))});
+    }
+    return start();
+  }
+
+  // ---------- Salah Quiz ----------
+  if (type === "quiz"){
+    const Q = [   // question, right answer, then wrong answers
+      ["How many prayers do we pray every day?", "5", "3", "7", "4"],
+      ["Which prayer is at dawn, before sunrise?", "Fajr", "Isha", "Asr", "Maghrib"],
+      ["Which prayer is at midday?", "Dhuhr", "Fajr", "Maghrib", "Isha"],
+      ["Which prayer is in the afternoon?", "Asr", "Fajr", "Isha", "Dhuhr"],
+      ["Which prayer is just after sunset?", "Maghrib", "Asr", "Fajr", "Dhuhr"],
+      ["Which prayer is at night?", "Isha", "Fajr", "Dhuhr", "Asr"],
+      ["How many Fard rakats are in Fajr?", "2", "3", "4", "1"],
+      ["How many Fard rakats are in Dhuhr?", "4", "2", "3", "5"],
+      ["How many Fard rakats are in Asr?", "4", "2", "3", "5"],
+      ["How many Fard rakats are in Maghrib?", "3", "2", "4", "5"],
+      ["How many Fard rakats are in Isha?", "4", "3", "2", "6"],
+      ["What do we do before praying, to be clean?", "Wudu", "Sujood", "Ruku", "Zakat"],
+      ["Which way do we face when we pray?", "Towards the Kaaba", "Towards the sun", "Any way we like", "Towards the sea"],
+      ["Which surah do we recite in every rakat?", "Al-Fatiha", "Al-Ikhlas", "An-Nas", "Al-Kawthar"],
+      ["What do we say to start the prayer?", "Allahu Akbar", "Alhamdulillah", "SubhanAllah", "Ameen"],
+      ["What is it called when we bow with our hands on our knees?", "Ruku", "Sujood", "Qiyam", "Tashahhud"],
+      ["What is it called when our forehead touches the ground?", "Sujood", "Ruku", "Qiyam", "Wudu"],
+      ["How do we finish the prayer?", "Saying salam to the right and left", "Clapping our hands", "Standing up quickly", "Saying Bismillah"],
+      ["Which prayer is followed by Witr?", "Isha", "Fajr", "Dhuhr", "Maghrib"],
+      ["How many rakats is Witr?", "3", "1", "2", "4"],
+      ["What is the special Friday prayer called?", "Jumu'ah", "Eid", "Tahajjud", "Ishraq"],
+      ["In which month do Muslims fast?", "Ramadan", "Rajab", "Shawwal", "Muharram"],
+      ["In which city is the Kaaba?", "Makkah", "Madinah", "Muscat", "Cairo"],
+      ["What is the call to prayer called?", "Adhan", "Dua", "Dhikr", "Khutbah"],
+      ["Which bonus prayer is prayed in the night?", "Tahajjud", "Ishraq", "Maghrib", "Jumu'ah"],
+      ["Which bonus prayer is prayed after sunrise?", "Ishraq", "Tahajjud", "Isha", "Witr"],
+      ["What do we say after sneezing?", "Alhamdulillah", "Ameen", "SubhanAllah", "Allahu Akbar"],
+      ["What do we say before eating?", "Bismillah", "Alhamdulillah", "Ameen", "Allahu Akbar"],
+    ];
+    const N = {easy:8, medium:10, hard:12}[level] || 10, OPTS = level === "easy" ? 3 : 4, TIME = level === "hard" ? 12 : 0;
+    const shuffle = a => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(v => v[1]);
+    let qs, i, right, picked;
+    const start = () => { qs = shuffle(Q).slice(0, N).map(([q, a, ...w]) => ({q, a, opts:shuffle([a, ...shuffle(w).slice(0, OPTS - 1)])})); i = 0; right = 0; picked = null; draw(); };
+    function pick(o){
+      if (picked !== null) return; picked = o; const ok = o === qs[i].a; if (ok) right++;
+      draw(); later(() => { i++; picked = null; draw(); }, ok ? 900 : 1900);
+    }
+    function draw(){
+      if (i >= qs.length){
+        const pct = right / qs.length; if (pct >= .7) confetti();
+        return frame(`You got ${right} of ${qs.length} right! ${pct === 1 ? "Perfect, MashaAllah!" : pct >= .7 ? "Great job!" : "Keep learning, you'll get there!"}`,
+          el("div",{class:"quiz-end"}, img(pct >= .7 ? "trophy" : "book")), {done:true, again:start, go:true});
+      }
+      const q = qs[i], qi = i;
+      if (TIME && picked === null) later(() => { if (picked === null && i === qi) pick("(time's up)"); }, TIME * 1000);
+      frame(`Question ${i + 1} of ${qs.length}`,
+        el("div",{class:"quiz"}, el("div",{class:"quiz-q"}, q.q),
+          TIME && picked === null ? el("div",{class:"quiz-timer"}, el("i",{style:`animation-duration:${TIME}s`})) : null,
+          picked === "(time's up)" ? el("div",{class:"note small"},"Time's up!") : null,
+          el("div",{class:"quiz-opts"}, q.opts.map(o => el("button",{class:`quiz-opt ${picked !== null ? (o === q.a ? "right" : o === picked ? "wrong" : "") : ""}`, disabled:picked !== null, onclick:() => pick(o)}, o)))),
+        {go:picked === null, players:el("div",{class:"gs-players"}, pcard(me, "Correct", right, true), el("div",{class:"gs-vs"},"·"), pcard(cpu, "To go", qs.length - i, false))});
+    }
+    return start();
+  }
 
   // ---------- Tic-Tac-Toe ----------
   if (type === "ttt"){

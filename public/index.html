@@ -614,6 +614,100 @@ body.gaming #guide-fab{display:none}
 .check-list{display:flex;flex-direction:column;gap:6px}
 .check-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:10px;align-items:center;padding:6px 8px 6px 12px;background:var(--surface-2);border-radius:14px}
 
+/* themes the child picks (html[data-theme]); "day" keeps the live sky */
+:root[data-theme="ocean"]{--sky-a:#075985;--sky-b:#1C9BC9;--sky-c:#8EE3EF;--sky-ink:#FFFFFF;--star-o:0;--accent:#D9434F;--accent-dk:#AA2D37;--grape:#1C7FB6;--grape-dk:#13618C}
+:root[data-theme="candy"]{--sky-a:#F25C9F;--sky-b:#FF9CCB;--sky-c:#FFE0EF;--sky-ink:#4A1036;--star-o:0;--accent:#C92A76;--accent-dk:#9C1E5A;--grape:#A44FCB;--grape-dk:#7F3AA0}
+:root[data-theme="jungle"]{--sky-a:#14532D;--sky-b:#2F9E5B;--sky-c:#B8EBA6;--sky-ink:#FFFFFF;--star-o:0;--accent:#C9561A;--accent-dk:#9A4013;--grape:#2F8F5B;--grape-dk:#216B43}
+:root[data-theme="space"]{--sky-a:#06061A;--sky-b:#1E1550;--sky-c:#4A2C8A;--sky-ink:#FFFFFF;--star-o:1;--accent:#7C4DEB;--accent-dk:#5B31C4}
+@media (prefers-color-scheme: light){
+  :root[data-theme="ocean"]{--bg:#ECF7FB;--surface-2:#E3F2F7;--line:#CFE6EE}
+  :root[data-theme="candy"]{--bg:#FFF2F8;--surface-2:#FCE6F1;--line:#F5D0E3}
+  :root[data-theme="jungle"]{--bg:#EFF8EC;--surface-2:#E3F2DE;--line:#CDE6C5}
+  :root[data-theme="space"]{--bg:#F0EEFB;--surface-2:#E8E4FA;--line:#D9D2F3}
+}
+.sky-btn{position:absolute;top:14px;right:14px;z-index:2;border:none;width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,#fff 30%,transparent)}
+.sky-btn img{width:30px;height:30px}
+.theme-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px}
+.tp{border:3px solid transparent;background:var(--surface-2);border-radius:18px;padding:8px;display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center}
+.tp[aria-pressed="true"]{border-color:var(--accent);background:var(--surface)}
+.tp-sw{width:100%;height:64px;border-radius:12px;display:grid;place-items:center}
+.tp-sw img{width:40px;height:40px}
+.tp b{font-family:var(--f-display);font-weight:700}
+.tp > span:last-child{font-size:.72rem;color:var(--muted);line-height:1.2}
+.tp-day .tp-sw{background:linear-gradient(90deg,#FFB38A,#7CCBFF 40%,#FF9B57 72%,#1D1B52)}
+.tp-ocean .tp-sw{background:linear-gradient(180deg,#075985,#1C9BC9,#8EE3EF)}
+.tp-candy .tp-sw{background:linear-gradient(180deg,#F25C9F,#FF9CCB,#FFE0EF)}
+.tp-jungle .tp-sw{background:linear-gradient(180deg,#14532D,#2F9E5B,#B8EBA6)}
+.tp-space .tp-sw{background:linear-gradient(180deg,#06061A,#1E1550,#4A2C8A)}
+
+/* prayer reward */
+.reward-card .rw-big{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.rw-amt{font-family:var(--f-display);font-weight:800;font-size:2.4rem;line-height:1}
+.rw-track{height:18px}
+.rw-bonus{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:14px;background:color-mix(in srgb, var(--sun) 18%, var(--surface));font-weight:800}
+.rw-bonus img{width:28px;height:28px;flex:none}
+.field select{font:inherit;padding:11px 13px;border-radius:14px;border:2px solid var(--line);background:var(--bg);color:var(--ink);width:100%}
+.field input[type="number"]{min-height:46px}
+
+/* badge certificates */
+button.badge{border:none;font:inherit;color:inherit;cursor:pointer}
+.cert-chip{margin-top:3px;font-size:.7rem;font-weight:900;color:var(--accent);background:var(--surface);padding:1px 9px;border-radius:99px}
+.cert-preview{border-radius:16px;overflow:hidden;background:var(--surface-2);min-height:160px;display:grid;place-items:center}
+.cert-preview img{width:100%;display:block}
+.modal:has(.cert-modal){max-width:760px}
+
+/* buddy chat */
+.modal:has(.chat-modal){max-width:520px}
+.chat-list{display:flex;flex-direction:column;gap:6px;height:min(48vh,420px);overflow-y:auto;padding:10px;border-radius:16px;background:var(--surface-2)}
+.bubble{align-self:flex-start;max-width:80%;background:var(--surface);border-radius:16px 16px 16px 4px;padding:7px 11px;display:flex;flex-direction:column;gap:1px;box-shadow:0 1px 0 var(--line);overflow-wrap:anywhere}
+.bubble.mine{align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-radius:16px 16px 4px 16px}
+.bubble .time{font-size:.66rem;opacity:.75;align-self:flex-end}
+.chat-quick{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.chat-quick .mini{white-space:nowrap;padding:4px 10px}
+.chat-send{display:flex;gap:8px}
+.chat-input{flex:1;min-width:0;font:inherit;padding:10px 12px;border-radius:14px;border:2px solid var(--line);background:var(--bg);color:var(--ink)}
+.chat-row{border:none;width:100%;font:inherit;color:inherit;cursor:pointer}
+.chat-prev{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-dot{width:12px;height:12px;border-radius:50%;background:var(--accent);flex:none}
+.nudge-btn{position:relative}
+.nudge-btn.has-dot::after{content:"";position:absolute;top:-2px;right:-2px;width:11px;height:11px;border-radius:50%;background:var(--accent)}
+
+/* new games */
+.rps{display:flex;flex-direction:column;gap:16px;align-items:center}
+.rps-arena{display:flex;align-items:center;justify-content:center;gap:18px}
+.rps-hand{width:120px;height:130px;border-radius:24px;background:var(--surface);box-shadow:var(--shadow);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+.rps-hand img{width:76px;height:76px;animation:pop .4s cubic-bezier(.2,1.6,.4,1)}
+.rps-q{font-family:var(--f-display);font-size:3rem;font-weight:800;color:var(--muted);line-height:1}
+.rps-pick{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%;max-width:420px}
+.rps-btn{border:none;background:var(--surface);border-radius:20px;padding:10px 4px;box-shadow:0 5px 0 var(--line);display:flex;flex-direction:column;align-items:center;gap:4px}
+.rps-btn img{width:56px;height:56px}
+.rps-btn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--line)}
+.words{display:flex;flex-direction:column;gap:16px;align-items:center}
+.balloons{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;min-height:66px}
+.balloon img{width:44px;height:60px;object-fit:contain;filter:hue-rotate(var(--h));animation:bob 3s ease-in-out infinite}
+.balloon:nth-child(2n) img{animation-delay:-1.4s}
+.balloon.popped img{opacity:0;animation:popb .35s ease-in}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes popb{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.7)}}
+.word{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.slot{width:36px;height:46px;border-bottom:4px solid var(--ink);display:grid;place-items:center;font-family:var(--f-display);font-weight:800;font-size:1.7rem}
+.slot.on{border-color:var(--ok)}
+.keys{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;width:100%;max-width:440px}
+.key{border:none;border-radius:12px;background:var(--surface);box-shadow:0 3px 0 var(--line);padding:9px 0;font-weight:900;font-size:1.05rem}
+.key.hit{background:var(--ok);color:#fff;box-shadow:none}
+.key.miss{background:var(--surface-2);color:var(--muted);box-shadow:none;text-decoration:line-through}
+.quiz{display:flex;flex-direction:column;gap:12px}
+.quiz-q{font-family:var(--f-display);font-weight:700;font-size:1.45rem;line-height:1.2;text-align:center;text-wrap:balance}
+.quiz-opts{display:grid;gap:8px}
+.quiz-opt{border:3px solid transparent;background:var(--surface);border-radius:18px;padding:13px 14px;font-weight:900;font-size:1.05rem;box-shadow:0 4px 0 var(--line);text-align:left}
+.quiz-opt.right{border-color:var(--ok);background:var(--ok-bg)}
+.quiz-opt.wrong{border-color:var(--miss);background:var(--miss-bg)}
+.quiz-opt:disabled{cursor:default;color:inherit}
+.quiz-timer{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden}
+.quiz-timer i{display:block;height:100%;background:var(--sun);animation:shrink linear forwards}
+@keyframes shrink{from{width:100%}to{width:0}}
+.quiz-end{display:grid;place-items:center}.quiz-end img{width:140px;height:140px;animation:pop .6s cubic-bezier(.2,1.6,.4,1)}
+
 /* modal, toast */
 .overlay{position:fixed;inset:0;background:rgba(20,17,41,.55);display:grid;place-items:center;padding:16px;z-index:10}
 .modal{background:var(--surface);border-radius:28px;padding:22px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:14px;max-height:calc(100% - 32px);overflow:auto;animation:rise .25s ease-out}
@@ -637,6 +731,7 @@ body.gaming #guide-fab{display:none}
       <h1>Salah Tracker</h1>
       <div class="dates"><span id="gdate" class="pill num"></span><span id="hdate" class="pill"></span></div>
     </div>
+    <button type="button" class="sky-btn" id="theme-btn" aria-label="Change theme" title="Change theme"><img src="/img/palette.png" alt=""></button>
     <div class="arc" id="arc"></div>
     <div class="arc-note" id="arc-note">Pray, tap the tick, collect stars!</div>
   </header>
@@ -651,10 +746,13 @@ body.gaming #guide-fab{display:none}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, updatePassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, arrayUnion, arrayRemove, getCountFromServer, addDoc, increment } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query, where, arrayUnion, arrayRemove, getCountFromServer, addDoc, increment, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { initGames } from "/games.js";
 import { PETS, petPanel, petScene, choosePet, levelFor, petType } from "/pet.js";
 import { initNudges } from "/nudges.js";
+import { rewardCard, rewardPanel, earned as rewardEarned, rewardStart } from "/rewards.js";
+import { openCertificate } from "/cert.js";
+import { initChat } from "/chat.js";
 let nudges = null;   // stickers between buddies (Realtime Database)
 import { loadTimes, prayerWindow, prayerToday, fmtTime, fmtIn, RAKATS, KIND_LABEL, openGuide } from "/prayer.js";
 let games = null;   // friends games (Realtime Database)
@@ -733,6 +831,15 @@ const marks = new Map();       // "<uid>_<YYYY-MM>" -> {uid, month, days, checke
 const subs = new Map();        // key -> unsubscribe
 let parentMode = false, parentHash = null;
 let asParent = false, parentLinkBad = false, parentPinPlain = null, fbCfg = null, helperAuth = null;   // grown-up login
+let reward = null, chat = null, chatOff = false;   // prayer reward settings; buddy chat
+// Themes the child picks. "day" follows the live sky through the day; the others keep one look all day.
+const THEMES = {
+  day:{name:"Day sky", icon:"t-day", note:"Changes colour through the day"}, ocean:{name:"Ocean", icon:"t-ocean", note:"Cool blues and waves"},
+  candy:{name:"Candy", icon:"t-candy", note:"Pink and sweet"}, jungle:{name:"Jungle", icon:"t-jungle", note:"Leafy greens"},
+  space:{name:"Space", icon:"t-space", note:"Stars all day long"},
+};
+function applyTheme(k){ k = THEMES[k] ? k : "day"; document.documentElement.dataset.theme = k; try { localStorage.setItem("salah-theme", k); } catch {} }
+try { applyTheme(localStorage.getItem("salah-theme")); } catch { applyTheme("day"); }
 let view = {sel:null, calY:0, calM:0, authTab:"login", editRace:false, loginAs:"kid"};
 let boardPeriod = "week";
 let pendingInvite = null;
@@ -807,7 +914,7 @@ function paintSky(){
   const kid = me && !me.disabled ? me : null, st = kid ? dayStatuses(kid.uid, s.pt) : [];
   const svg = `<svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M7 86 A43 58 0 0 1 93 86" vector-effect="non-scaling-stroke"/></svg>`;
   const body = el("span",{class:`sun ${s.phase === "night" ? "moon" : ""}`});
-  const bp = s.pos == null ? {x:93, y:-4} : ARC_PT(s.pos);
+  const bp = s.pos == null ? {x:80, y:-6} : ARC_PT(s.pos);
   body.style.left = `${bp.x}%`; body.style.top = `${bp.y - (s.pos == null ? 0 : 9)}%`;
   const beads = PRAYERS.map((p, i) => {
     const q = kid ? qazaOf(kid.uid, s.pt, p.k) : null, code = st[i] ? (q === "ok" ? "q" : st[i]) : "";
@@ -924,6 +1031,33 @@ function streak(uid){
   if (!fullDay(dayStatuses(uid, d))) d = addDays(d,-1);
   while (fullDay(dayStatuses(uid, d)) && n < 3660){ n++; d = addDays(d,-1); }
   return n;
+}
+// Prayers that count for the money reward in one month: prayed (on time, late, done later) and excused.
+function rewardCount(uid, ym){
+  const today = todayStr(), days = new Date(+ym.slice(0,4), +ym.slice(5,7), 0).getDate(); let n = 0;
+  for (let d = 1; d <= days; d++){
+    const s = `${ym}-${pad(d)}`; if (s > today) break;
+    for (const p of PRAYERS){ const st = statusOf(uid, s, p.k);
+      if ((st === "p" || st === "l") && isCounted(uid, s, p.k)) n++;
+      else if (st === "e" || (st === "m" && qazaOf(uid, s, p.k) === "ok")) n++; }
+  }
+  return n;
+}
+const ymName = ym => monthName(+ym.slice(0,4), +ym.slice(5,7) - 1);
+function openThemes(){
+  let pick = document.documentElement.dataset.theme || "day";
+  const before = pick;
+  modal(close => el("div",{class:"stack"},
+    el("div",{class:"sec-title"}, img("palette"), el("div",{}, el("h2",{},"Pick a theme"), el("div",{class:"small muted"},"Change how Salah Tracker looks. Try them!"))),
+    el("div",{class:"theme-pick", role:"group", "aria-label":"Themes"}, Object.entries(THEMES).map(([k, th]) => el("button",{type:"button", class:`tp tp-${k}`, "aria-pressed":String(pick === k),
+      onclick:e => { pick = k; applyTheme(k); paintSky(); e.currentTarget.parentNode.querySelectorAll(".tp").forEach(b => b.setAttribute("aria-pressed", String(b === e.currentTarget))); }},
+      el("span",{class:"tp-sw"}, img(th.icon)), el("b",{}, th.name), el("span",{}, th.note)))),
+    el("div",{class:"actions"},
+      el("button",{class:"btn ghost", onclick:() => { applyTheme(before); close(); }},"Cancel"),
+      el("button",{class:"btn primary", onclick:async () => {
+        close(); toast(`${THEMES[pick].name} theme on!`, THEMES[pick].icon);
+        if (me && !asParent && me.theme !== pick) updateDoc(doc(db, "users", me.uid), {theme:pick}).catch(() => {});
+      }}, "Use this theme"))));
 }
 function monthsFor(uid){
   const f = parse(firstDate(uid)), n = new Date(), out = [];
@@ -1404,9 +1538,11 @@ function startSession(user){
       if (me.parent !== user.uid){ parentLinkBad = true; me = null; return render(); }
       parentMode = true; refreshTimes();
       if (first){ const n = new Date(); view.sel = null; view.calY = n.getFullYear(); view.calM = n.getMonth(); watchKidMonths(uid); }
+      for (const f of me.friends || []) sub(`f:${f}:profile`, () => onSnapshot(doc(db, "users", f), s => { if (s.exists()){ people.set(f, {uid:f, ...s.data()}); render(); } }, () => {}));   // buddy names for reading chats
       return render();
     }
-    syncRacers();
+    if (me.theme && THEMES[me.theme]) applyTheme(me.theme);
+    syncRacers(); chat?.sync();
     refreshTimes();   // only reloads when the city changes
     checkBadges(); checkPet();
     if (first){
@@ -1417,6 +1553,8 @@ function startSession(user){
     }
     render();
   }, () => toast("Couldn't load your profile. Reload the page.", "lock")));
+  // Prayer reward set by the grown-up: the child and the grown-up both watch it.
+  sub("reward", () => onSnapshot(doc(db, "users", uid, "private", "reward"), s => { reward = s.exists() ? s.data() : null; render(); }, () => {}));
   // A grown-up login loads the child's months in watchKidMonths(); badge and pet celebrations stay for the child.
   if (!asParent) sub("mymarks", () => onSnapshot(query(collection(db, "marks"), where("uid", "==", uid)), snap => {
     snap.docs.forEach(d => marks.set(d.id, structuredClone(d.data())));
@@ -1528,7 +1666,8 @@ function renderKid(){
     el("div",{class:"toolbar", style:"margin-bottom:12px"},
       el("button",{class:"btn ghost sm", onclick:openParent}, img("lock"), parentMode ? "Grown-up mode on" : pendingQaza(me.uid).length ? `Grown-up · ${pendingQaza(me.uid).length} to confirm` : "Grown-up"),
       el("span",{style:"flex:1"}),
-      el("button",{class:`btn ghost sm msg-btn ${nudges?.unread() ? "has-new" : ""}`, onclick:() => nudges?.openInbox(), "aria-label":"Messages from buddies"}, img("envelope"), nudges?.unread() ? String(nudges.unread()) : null),
+      chatOff || !(me.friends || []).length ? null : el("button",{class:`btn ghost sm msg-btn ${chat?.unread() ? "has-new" : ""}`, onclick:() => chat?.openList(), "aria-label":"Chat with buddies", title:"Chat"}, img("chat"), chat?.unread() ? String(chat.unread()) : null),
+      el("button",{class:`btn ghost sm msg-btn ${nudges?.unread() ? "has-new" : ""}`, onclick:() => nudges?.openInbox(), "aria-label":"Stickers from buddies", title:"Stickers"}, img("envelope"), nudges?.unread() ? String(nudges.unread()) : null),
       el("button",{class:"linkbtn", onclick:openProfile},"Profile"),
       el("button",{class:"linkbtn", onclick:logout},"Log out")),
     el("div",{class:"kid-hero"},
@@ -1634,10 +1773,21 @@ function renderKid(){
       el("div",{class:"small"}, st >= 7 ? "A whole week or more. Amazing!" : st ? "Keep the fire going tomorrow!" : "Pray all 5 today to start a streak.")));
 
   const s = stats(uid), got = BADGES.filter(b=>b.test(s)).length;
+  // Earned badges open a certificate to download or print.
+  const certFor = list => openCertificate({el, img, modal, toast}, {name:me.name, badges:list.map(b => ({name:b.name, hint:b.hint, icon:b.icon})),
+    date:new Date().toLocaleDateString("en-GB", {day:"numeric", month:"long", year:"numeric"}), hijri:hijriText(new Date())});
   const badges = el("section",{class:"panel stack"},
-    secTitle("crown", asParent ? `${me.name}'s badges` : "My Badges", `${got} of ${BADGES.length} collected`),
+    el("div",{class:"row", style:"justify-content:space-between"},
+      secTitle("crown", asParent ? `${me.name}'s badges` : "My Badges", got ? `${got} of ${BADGES.length} collected · tap one for a certificate` : `${got} of ${BADGES.length} collected`),
+      got ? el("button",{class:"btn ghost sm", onclick:() => certFor(BADGES.filter(b => b.test(s)))}, img("scroll"), "All-badges certificate") : null),
     el("div",{class:"badges"}, BADGES.map(b => { const has = b.test(s);
-      return el("div",{class:`badge ${has?"got":"locked"}`}, img(b.icon), el("b",{}, b.name), el("span",{}, b.hint)); })));
+      return has ? el("button",{type:"button", class:"badge got", "aria-label":`${b.name}: get a certificate`, onclick:() => certFor([b])}, img(b.icon), el("b",{}, b.name), el("span",{}, b.hint), el("span",{class:"cert-chip"},"Certificate"))
+        : el("div",{class:"badge locked"}, img(b.icon), el("b",{}, b.name), el("span",{}, b.hint)); })));
+  const rwArgs = {el, img, r:reward, ym:thisYM(), monthName:ymName(thisYM())};
+  const rewardEl = asParent
+    ? rewardPanel({...rwArgs, toast, kidName:me.name, counts:ym => rewardCount(uid, ym), months:monthsFor(uid).map(m => `${m.y}-${pad(m.m + 1)}`),
+        save:patch => setDoc(doc(db, "users", uid, "private", "reward"), patch, {merge:true})})
+    : rewardCard({...rwArgs, counted:rewardCount(uid, thisYM()), prev:rewardStart(reward) && prevYM() >= rewardStart(reward) ? rewardEarned(reward, prevYM(), rewardCount(uid, prevYM())) : null});
 
   const bar = parentMode && !asParent ? el("div",{class:"parent-bar"},
       el("span",{class:"pb-badge"},"Grown-up mode"),
@@ -1649,17 +1799,17 @@ function renderKid(){
     const top = parentHome();
     if (WIDE.matches) show(el("div",{class:"cols"},
       el("div",{class:"col"}, top, check, daySheet, renderCalendar()),
-      el("div",{class:"col side"}, scores, badges, petPanel(petCtx()), history(), gradeGuide())));
-    else show(top, check, daySheet, scores, renderCalendar(), badges, petPanel(petCtx()), history(), gradeGuide());
+      el("div",{class:"col side"}, rewardEl, scores, badges, petPanel(petCtx()), history(), gradeGuide())));
+    else show(top, rewardEl, check, daySheet, scores, renderCalendar(), badges, petPanel(petCtx()), history(), gradeGuide());
     return;
   }
   if (WIDE.matches){
     // Laptop: today's prayers + calendar on the left, scores + race + badges on the right.
     show(bar, el("div",{class:"cols"},
-      el("div",{class:"col"}, hero, check, daySheet, renderCalendar()),
+      el("div",{class:"col"}, hero, check, daySheet, rewardEl, renderCalendar()),
       el("div",{class:"col side"}, petPanel(petCtx()), scores, raceBoard(), games?.panel(), badges, history(), gradeGuide())));
   } else {
-    show(bar, hero, check, daySheet, petPanel(petCtx()), raceBoard(), games?.panel(), scores, badges, renderCalendar(), history(), gradeGuide());
+    show(bar, hero, check, daySheet, rewardEl, petPanel(petCtx()), raceBoard(), games?.panel(), scores, badges, renderCalendar(), history(), gradeGuide());
   }
 }
 
@@ -1700,7 +1850,8 @@ function raceBoard(){
         el("div",{style:"min-width:0"},
           el("div",{class:"rname"}, r.p.name, isMe ? el("span",{class:"you"},"YOU") : null,
             !isMe && view.editRace ? el("button",{class:"linkbtn rm", onclick:()=>removeRacer(r.uid)},"remove") : null,
-            !isMe && !view.editRace ? el("button",{class:"nudge-btn", "aria-label":`Send ${r.p.name} a nudge`, onclick:()=>nudges?.openSend(r.uid)}, img("e-wave")) : null),
+            !isMe && !view.editRace ? el("button",{class:"nudge-btn", "aria-label":`Send ${r.p.name} a nudge`, onclick:()=>nudges?.openSend(r.uid)}, img("e-wave")) : null,
+            !isMe && !view.editRace && !chatOff ? el("button",{class:`nudge-btn ${chat?.unreadFrom(r.uid) ? "has-dot" : ""}`, "aria-label":`Chat with ${r.p.name}`, onclick:()=>chat?.openChat(r.uid)}, img("chat")) : null),
           el("div",{class:"track"}, el("i",{style:`width:${r.points / top * 100}%;background-color:${g?.color || "var(--sky)"}`}))),
         el("div",{class:"rpct"}, el("b",{class:"num"}, r.points ? `${fmtPts(r.points)} pts` : "–"),
           el("span",{}, `${r.today}/5 today`), r.pending ? el("span",{}, `${r.pending} waiting OK`) : null));
@@ -1755,7 +1906,8 @@ function parentCheck(){
 const pinButtons = () => el("div",{class:"row"},
   asParent ? null : el("button",{class:"btn ghost sm", onclick:openChangeKidPin},"Change child's PIN"),
   el("button",{class:"btn ghost sm", onclick:openChangeParentPin},"Change grown-up PIN"),
-  asParent ? el("span",{class:"small muted"},"To change your child's PIN, log in as your child and open Grown-up.") : null);
+  asParent ? el("span",{class:"small muted"},"To change your child's PIN, log in as your child and open Grown-up.")
+    : el("span",{class:"small muted"},"Money rewards for prayers are set from the grown-up login: log out, then choose \"I'm a grown-up\"."));
 function agoText(ms){
   const m = Math.round((Date.now() - ms) / 60000);
   if (m < 2) return "just now"; if (m < 60) return `${m} minutes ago`;
@@ -1781,7 +1933,8 @@ function parentHome(){
     el("div",{class:"pg-today"}, el("b",{}, `Today: ${done} of 5 prayers`),
       el("div",{class:"pg-chips"}, PRAYERS.map((p, i) => el("span",{class:`pg-chip ${st[i] ? "s-" + st[i] : ""}`}, `${p.en} · ${st[i] ? STATUS[st[i]].short : "not yet"}`)))),
     el("div",{class:"pg-grid"}, mini("This week", periodScore(uid, "week")), mini("This month", periodScore(uid, "month"))),
-    parentMsgBox());
+    parentMsgBox(),
+    (me.friends || []).length && !chatOff ? el("button",{class:"btn ghost sm", style:"align-self:flex-start", onclick:() => chat?.openList()}, img("chat"), `Read ${me.name}'s chats with buddies`) : null);
 }
 
 function renderCalendar(){
@@ -1833,7 +1986,7 @@ function gradeGuide(){
 // ---------- account actions ----------
 async function logout(){
   games?.stop(); nudges?.stop(); petShown = null; unsubAll(); me = null; people.clear(); marks.clear(); parentMode = false; parentHash = null;
-  asParent = false; parentLinkBad = false; parentPinPlain = null; marksLoaded = false;
+  asParent = false; parentLinkBad = false; parentPinPlain = null; marksLoaded = false; reward = null; chat?.stop();
   view = {sel:null, calY:0, calM:0, authTab:"login", editRace:false, loginAs:view.loginAs};
   await signOut(auth); render(); scrollTo(0,0);
 }
@@ -1941,6 +2094,7 @@ setInterval(() => {
   if (me && !$modal.firstChild) render();
 }, 60000);
 document.getElementById("guide-fab").addEventListener("click", () => openGuide({el, img}));
+document.getElementById("theme-btn").addEventListener("click", () => openThemes());
 // Phones pause pages in the background: refresh the date, sky and day as soon as the app is shown again.
 document.addEventListener("visibilitychange", () => { if (document.visibilityState !== "visible") return; paintHeaderDates(); if (me){ refreshTimes(true); if (!$modal.firstChild) render(); } });
 try {
@@ -1951,7 +2105,9 @@ try {
   games = initGames({app, dbURL: cfg.databaseURL || "https://family-salah-tracker-765ed-default-rtdb.europe-west1.firebasedatabase.app",
     me: () => me, people, el, img, avatar, toast, confetti, rerender: () => render()});
   refreshTimes();
-  onSnapshot(doc(db, "config", "app"), s => { requireConfirm = !!s.data()?.requireConfirm; if (me){ publishScore(); render(); } }, () => {});
+  chat = initChat({db, fs:{collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp}, me:() => me, people, el, img, avatar, toast, modal,
+    rerender:() => { if (!$modal.firstChild) render(); }, enabled:() => !chatOff, readOnly:() => asParent});
+  onSnapshot(doc(db, "config", "app"), s => { requireConfirm = !!s.data()?.requireConfirm; chatOff = !!s.data()?.chatOff; chat?.sync(); if (me){ publishScore(); render(); } }, () => {});
   if (location.pathname.startsWith("/admin")){
     document.getElementById("guide-fab").hidden = true;
     const { startAdmin } = await import("/admin.js");

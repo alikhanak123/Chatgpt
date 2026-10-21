@@ -35,9 +35,11 @@ service cloud.firestore {
         || (resource.data.get('parent', '') == request.auth.uid && request.resource.data.get('parent', '') == request.auth.uid));
       allow delete: if signedIn() && (request.auth.uid == uid || isAdmin());
 
-      // Grown-up PIN lives here; only the kid's own login (or the admin) can read it.
+      // Private things: the grown-up PIN (settings) and the prayer reward (reward).
+      // The child can read both; only the grown-up login or the admin may set the reward, so a child can't change their own prize.
       match /private/{docId} {
-        allow read, write: if signedIn() && (request.auth.uid == uid || isAdmin() || isParentOf(uid));
+        allow read: if signedIn() && (request.auth.uid == uid || isAdmin() || isParentOf(uid));
+        allow write: if signedIn() && (isAdmin() || isParentOf(uid) || (docId != 'reward' && request.auth.uid == uid));
       }
     }
 
@@ -56,6 +58,23 @@ service cloud.firestore {
         && (request.resource.data.uid == request.auth.uid || isParentOf(request.resource.data.uid))
         && id.split('_')[0] == request.resource.data.uid;
       allow delete: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+    }
+
+    // Buddy chat: chats/<uidA>_<uidB>/msgs/<id>, the two uids sorted. Only two kids who are Salah Buddies can read and write it;
+    // each child's linked grown-up login may read it; the admin may read and remove messages. Messages are short and can't be edited.
+    match /chats/{pair}/msgs/{id} {
+      function members() { return pair.split('_'); }
+      function isMember() { return signedIn() && members().size() == 2 && request.auth.uid in members(); }
+      function buddy() { return members()[0] == request.auth.uid ? members()[1] : members()[0]; }
+      function areBuddies() { return buddy() in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('friends', []); }
+      allow read: if (isMember() && areBuddies()) || isAdmin()
+        || (members().size() == 2 && (isParentOf(members()[0]) || isParentOf(members()[1])));
+      allow create: if isMember() && areBuddies()
+        && request.resource.data.keys().hasOnly(['from', 'text', 't'])
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 200
+        && request.resource.data.t == request.time;
+      allow delete: if isAdmin();
     }
 
     // All-kids ranking: numbers only (no names). Everyone signed in can count; each kid writes their own.

@@ -58,6 +58,9 @@ The **admin page** is at `/admin`: it shows all kids and activity and holds the 
 | `public/pet3d.js` | 3D pet scene (three.js): loads GLB models, lighting, garden, calm wandering, crown/bow/stars by level. |
 | `public/petrig.js` | Hand-made rigging: realistic eyes, cat walk cycle, parrot (macaw) skeleton and animation. |
 | `public/admin.js` | The `/admin` page. |
+| `public/rewards.js` | Prayer money rewards: calculation, the child's card, the grown-up's settings. |
+| `public/chat.js` | Buddy chat with safety filters (no links/phone numbers, kind-words filter). |
+| `public/cert.js` | Badge certificates (canvas → PDF via jsPDF from cdnjs, picture, print). |
 | `public/models/*.glb` | 3D animal models. Licences are in `public/models/CREDITS.txt`; keep the credit line shown under the pet. |
 | `public/img/*.png` | 3D Fluent emoji images used across the UI. |
 | `firestore.rules` | Firestore security rules. **Security-critical.** |
@@ -85,6 +88,9 @@ The **admin page** is at `/admin`: it shows all kids and activity and holds the 
 - **Firestore:**
   - `users/{uid}` is the profile. Fields: username, name, avatar, dob, city, country, joined, friends[], badges[], pet{type,name,since}, petLevel, parentMsg{from,text,t,seen}, parent, lastSeen, visits, disabled.
   - `users/{uid}/private/settings` holds `parentPinHash`.
+  - `users/{uid}/private/reward` holds the prayer money reward: `{currency, show, plan:{mode:'month'|'each', prize, target, each}, months:{YYYY-MM:{plan, bonus, note, paid}}}`. Only the grown-up login (or admin) can write it; the child reads it.
+  - `users/{uid}.theme` is the child's chosen theme (day, ocean, candy, jungle, space).
+  - `chats/{uidA}_{uidB}/msgs/{id}` = `{from, text, t}`: buddy chat (uids sorted). Only buddies can read/write; each child's grown-up login can read; `config/app.chatOff` switches chat off.
   - `marks/{uid}_{YYYY-MM}` holds one kid's month: `{uid, month, days:{DD:{fajr:'p'|'l'|'m'|'e', …, tahajjud, ishraq}}, checked:{DD:{fajr:true…}}, qaza:{DD:{fajr:'pending'|'ok'}}}`.
   - `leaderboard/{uid}` holds numbers only: `{wk, w, wb, mk, m, mb, t}`.
   - `config/app` holds app switches, e.g. `requireConfirm` (whether grown-ups must confirm ticks; off by default).
