@@ -72,6 +72,27 @@ function buildGarden(scene, ground){
     if (i % 3 === 0){ const fl = new THREE.Group(); fl.add(at(new THREE.Mesh(new THREE.CylinderGeometry(.015, .015, .25, 6), toon("#4FAE5C")), 0, .12, 0)); fl.add(at(ball(.07, flowerCols[i % 4], 1, .6, 1, 12), 0, .26, 0)); fl.position.set(x, 0, z); scene.add(fl); }
     else { const tc = cone(.07, .22, "#5DBB46", 6); tc.position.set(x, .1, z); scene.add(tc); }
   }
+  const N = 170, blade = new THREE.ConeGeometry(.022, .15, 4); blade.translate(0, .075, 0);
+  const grass = new THREE.InstancedMesh(blade, toon("#FFFFFF"), N), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), c = new THREE.Color();
+  let seed = 11; const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+  for (let i = 0; i < N; i++){
+    const a = rnd() * Math.PI * 2, r = .35 + Math.sqrt(rnd()) * 1.85, s = .6 + rnd() * .8;
+    q.setFromEuler(e.set((rnd() - .5) * .5, rnd() * 3, (rnd() - .5) * .5));
+    m4.compose(new THREE.Vector3(Math.cos(a) * r, 0, Math.sin(a) * r * .9), q, new THREE.Vector3(s, s, s));
+    grass.setMatrixAt(i, m4); grass.setColorAt(i, c.set(["#5DBB46", "#4FAE5C", "#7ACB52", "#6BC04A"][i % 4]));
+  }
+  scene.add(grass);
+}
+// A soft round shadow right under the pet, so it looks grounded (a cheap "contact shadow").
+let blobTex = null;
+function contactShadow(size){
+  if (!blobTex){
+    const cv = document.createElement("canvas"); cv.width = cv.height = 128; const x = cv.getContext("2d");
+    const g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, "rgba(20,30,20,.55)"); g.addColorStop(.55, "rgba(20,30,20,.25)"); g.addColorStop(1, "rgba(20,30,20,0)");
+    x.fillStyle = g; x.fillRect(0, 0, 128, 128); blobTex = new THREE.CanvasTexture(cv); blobTex.colorSpace = THREE.SRGBColorSpace;
+  }
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(size, size * .75), new THREE.MeshBasicMaterial({map:blobTex, transparent:true, depthWrite:false}));
+  m.rotation.x = -Math.PI / 2; m.position.y = .004; return m;
 }
 // Bow (level 3) or crown (level 5): floats just above the head and follows it.
 function crownMesh(){
@@ -93,8 +114,10 @@ function loadModel(type){
       if (!cfg.flat){ const g = m.geometry; g.deleteAttribute("normal");        // smooth away the blocky low-poly look
         const sm = BGU.mergeVertices(g, 1e-4); sm.computeVertexNormals(); m.geometry = sm; }
       const old = m.material, col = cfg.colors?.[old.name];
-      m.material = new THREE.MeshStandardMaterial({map:old.map || null, color:col ? new THREE.Color(col) : old.color,
-        roughness:/eye/i.test(old.name) ? .25 : .92, metalness:0, envMapIntensity:.9});  // matte fur, no plastic shine
+      const eye = /eye/i.test(old.name), base = col ? new THREE.Color(col) : old.color.clone();
+      m.material = new THREE.MeshPhysicalMaterial({map:old.map || null, color:base, roughness:eye ? .25 : .88, metalness:0, envMapIntensity:.85,
+        // sheen = the soft glow along the edges of fur or velvet; feathers (flat) get less
+        sheen:eye ? 0 : cfg.flat ? .3 : .6, sheenRoughness:.6, sheenColor:base.clone().lerp(new THREE.Color("#FFFFFF"), .4)});
       m.material.name = old.name;
     });
     rigModel(type, gltf);              // eyes / skeleton / walk for the pets that need it
@@ -124,9 +147,15 @@ async function start(api, opts){
   const pmrem = new THREE.PMREMGenerator(renderer); scene.environment = pmrem.fromScene(new RoomEnvironment(), .04).texture;
   const camera = new THREE.PerspectiveCamera(opts.small ? 30 : 32, 1, .1, 50);
   camera.position.set(0, opts.small ? 1.9 : 2.25, opts.small ? 4.6 : 4.9); camera.lookAt(0, .7, 0);
-  scene.add(new THREE.HemisphereLight("#FFFFFF", "#B5D6A8", .9));
-  const sun = new THREE.DirectionalLight("#FFF4E0", 2.2); sun.position.set(2.5, 5, 3.5); sun.castShadow = true;
-  sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, {left:-3, right:3, top:3, bottom:-3}); sun.shadow.radius = 4; scene.add(sun);
+  const hemi = new THREE.HemisphereLight("#E3F0FF", "#9CC98A", .7); scene.add(hemi);
+  const sun = new THREE.DirectionalLight("#FFF1DC", 2.1); sun.position.set(2.5, 5, 3.5); sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024); Object.assign(sun.shadow.camera, {left:-3, right:3, top:3, bottom:-3}); sun.shadow.radius = 6;
+  sun.shadow.normalBias = .02; sun.shadow.bias = -.0004; scene.add(sun);
+  const fill = new THREE.DirectionalLight("#CFE3FF", .45); fill.position.set(-4, 2.5, 3); scene.add(fill);
+  const rim = new THREE.DirectionalLight("#FFFFFF", 1.4); rim.position.set(-2, 3.5, -5); scene.add(rim);
+  // the ambient light takes the colour of the app's sky (dawn pink, noon blue, sunset orange…)
+  const skyTint = () => { const v = getComputedStyle(document.documentElement).getPropertyValue("--sky-b").trim(); if (v) hemi.color.set(v).lerp(new THREE.Color("#FFFFFF"), .55); };
+  skyTint(); const tintT = setInterval(skyTint, 30000);
   buildGarden(scene, opts.ground || "#9BDB7C");
 
   // the pet
@@ -160,6 +189,7 @@ async function start(api, opts){
     actions.idle?.stop();
     const turn = new THREE.Group(); turn.rotation.y = -face; turn.add(model); holder.add(turn);
     anim = animator(model, holder);
+    parts.blob = contactShadow(cfg.h * grow * 1.15); scene.add(parts.blob);
     if (head && level >= 3){
       parts.head = head; parts.headH = cfg.h * grow;
       parts.topper = level >= 5 ? crownMesh() : bowMesh();
@@ -238,6 +268,7 @@ async function start(api, opts){
     if (opts.small || cfg.stay) S.ry = .5 + Math.sin(t*.25)*.45;
     if (!isPlant && !actions.happy && !anim?.procHappy) S.hopY = S.happyT > 0 ? Math.sin((1.2 - S.happyT) / 1.2 * Math.PI) * .18 : 0;
     holder.position.set(S.x, (S.hopY || 0) + (anim?.bob?.() || 0), S.z); holder.rotation.y = S.ry;
+    if (parts.blob){ parts.blob.position.x = S.x; parts.blob.position.z = S.z; parts.blob.rotation.z = -S.ry; parts.blob.scale.setScalar(Math.max(.6, 1 - (S.hopY || 0) * 2)); }
     anim?.reset?.();
     if (lookHead) lookHead.quaternion.copy(headRest);      // clips that don't move the head would otherwise add up our turns
     if (mixer) mixer.update(dt);
@@ -267,7 +298,7 @@ async function start(api, opts){
   };
   tick();
   function dispose(){
-    cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); mixer?.stopAllAction();
+    cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); mixer?.stopAllAction(); clearInterval(tintT);
     renderer.dispose(); renderer.forceContextLoss?.(); api.disposed = true;
   }
   api.dispose = dispose; api.ready = true;

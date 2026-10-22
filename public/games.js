@@ -157,7 +157,9 @@ export function initGames(ctx){
     const me = ctx.me(); if (!me) return null;
     const friends = (me.friends||[]).filter(f => ctx.people.has(f));
     if (!pick.friend || !friends.includes(pick.friend)) pick.friend = friends[0] || null;
-    if (!friends.length || GAMES[pick.type]?.solo) pick.mode = "cpu";
+    // "With a buddy" shows only games you can play together; computer-only games appear under "Vs computer".
+    const mode = friends.length ? pick.mode : "cpu";
+    if (mode === "friend" && GAMES[pick.type]?.solo) pick.type = "c4";
     const head = el("div",{class:"sec-title"}, img("game"), el("div",{}, el("h2",{},"Games"), el("div",{class:"small muted"},"Play with your Salah Buddies or against the computer.")));
     const online = ready && !broken;
     const entries = online ? Object.entries(inbox).sort((a,b) => (b[1].ts||0) - (a[1].ts||0)) : [];
@@ -165,14 +167,14 @@ export function initGames(ctx){
     const mine = entries.filter(([,e]) => e.status !== "invite" && e.status !== "done");
 
     const gameCards = el("div",{class:"game-pick", role:"group", "aria-label":"Choose a game"},
-      Object.entries(GAMES).map(([k,g]) => el("button",{type:"button", class:"gp", "aria-pressed":String(pick.type===k), onclick:()=>{pick.type=k; ctx.rerender();}},
+      Object.entries(GAMES).filter(([, g]) => mode === "cpu" || !g.solo).map(([k,g]) => el("button",{type:"button", class:"gp", "aria-pressed":String(pick.type===k), onclick:()=>{pick.type=k; ctx.rerender();}},
         img(g.icon), el("b",{}, g.name), el("span",{}, g.blurb))));
     const multi = !!GAMES[pick.type].multi;
     const seg = (items, cur, set, label) => el("div",{class:"seg", role:"group", "aria-label":label}, items.map(([k,l]) => el("button",{type:"button", "aria-pressed":String(cur===k), onclick:()=>{ set(k); ctx.rerender(); }}, l)));
     const modeSeg = seg([["friend","With a buddy"],["cpu","Vs computer"]], pick.mode, v => pick.mode = v, "Who to play with");
 
     let choose;
-    if (pick.mode === "cpu"){
+    if (mode === "cpu"){
       choose = el("div",{class:"stack", style:"gap:10px"},
         pick.type === "snakes"
           ? el("div",{}, el("div",{class:"eyebrow", style:"margin-bottom:6px"},"Computer players"), seg([[1,"1"],[2,"2"],[3,"3"]], pick.bots, v => pick.bots = v, "Number of computer players"))
@@ -205,9 +207,9 @@ export function initGames(ctx){
           el("div",{class:"small muted"}, e.status === "sent" ? (GAMES[e.type]?.multi ? "Open to start when friends join" : "Waiting for them to say yes…") : e.status === "joined" ? "Waiting for the host to start" : "Tap Open to play")),
         el("button",{class:"linkbtn", onclick:()=>dismiss(gid)},"remove"),
         (e.status === "playing" || e.status === "joined" || (e.status === "sent" && GAMES[e.type]?.multi)) ? el("button",{class:"btn primary sm", onclick:()=>openGame(gid)},"Open") : null))) : null,
+      friends.length ? modeSeg : el("div",{class:"small muted"},"Invite a Salah Buddy to play together online. For now, play vs the computer!"),
       el("div",{class:"eyebrow"},"Pick a game"),
       gameCards,
-      GAMES[pick.type].solo ? null : friends.length ? modeSeg : el("div",{class:"small muted"},"Invite a Salah Buddy to play together online. For now, play vs the computer!"),
       choose);
   }
 
@@ -654,5 +656,6 @@ export function initGames(ctx){
     };
   }
 
-  return {start, stop, panel, inviteCount, yourTurnCount, close: closeScreen};
+  function playWith(uid){ pick.mode = "friend"; pick.friend = uid; pick.many = new Set([uid]); if (GAMES[pick.type]?.solo) pick.type = "c4"; }
+  return {start, stop, panel, inviteCount, yourTurnCount, playWith, close: closeScreen};
 }
