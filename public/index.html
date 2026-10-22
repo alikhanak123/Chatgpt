@@ -474,7 +474,7 @@ body.gaming #guide-fab{display:none}
 .kid-hero .hello{align-self:end}.kid-hero .uname{align-self:start}
 .kid-hero .rank-pill,.kid-hero > div > .linkbtn,.kid-hero > div > .small{grid-column:1 / -1;justify-self:start;margin-top:0}
 .toolbar{row-gap:4px;column-gap:6px}
-@media (max-width:480px){.panel{padding:16px}.toolbar .btn.sm{padding:6px 10px}}
+@media (max-width:480px){.panel{padding:16px}.toolbar .btn.sm{padding:6px 10px}.toolbar .msg-btn{padding:6px 8px}.toolbar{column-gap:4px}}
 .hello{font-family:var(--f-display);font-weight:700;font-size:clamp(1.6rem,6vw,2.2rem);line-height:1.05;overflow-wrap:anywhere}
 .uname{color:var(--muted);font-weight:900}
 .rank-pill{display:inline-flex;align-items:center;gap:6px;background:var(--surface-2);border-radius:99px;padding:3px 12px 3px 4px;font-weight:900;font-size:.9rem;margin-top:6px;border:none}
@@ -709,7 +709,7 @@ button.badge{border:none;font:inherit;color:inherit;cursor:pointer}
 .quiz-end{display:grid;place-items:center}.quiz-end img{width:140px;height:140px;animation:pop .6s cubic-bezier(.2,1.6,.4,1)}
 
 /* bottom navigation bar (Material 3 style): Prayers, Buddies, Games, Me */
-#tabbar{position:fixed;left:0;right:0;bottom:0;z-index:12;display:grid;grid-template-columns:repeat(4,1fr);gap:2px;
+#tabbar{position:fixed;left:0;right:0;bottom:0;z-index:12;display:grid;grid-template-columns:repeat(2,1fr);gap:2px;
   padding:8px 6px calc(10px + env(safe-area-inset-bottom,0px));background:color-mix(in srgb, var(--surface) 90%, transparent);
   -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:0 -1px 0 var(--line), 0 -12px 30px -22px rgba(34,32,74,.55)}
 .tab{border:none;background:none;display:flex;flex-direction:column;align-items:center;gap:4px;padding:2px 0;color:var(--muted);font-weight:800;font-size:.78rem}
@@ -722,7 +722,8 @@ button.badge{border:none;font:inherit;color:inherit;cursor:pointer}
 body.has-tabs .wrap{padding-bottom:124px}
 body.has-tabs #guide-fab{bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 body.gaming #tabbar{display:none}
-@media (min-width:1024px){#tabbar{left:50%;right:auto;transform:translateX(-50%);bottom:16px;width:min(560px,92vw);border-radius:30px;padding:8px}}
+@media (min-width:1024px){#tabbar{left:50%;right:auto;transform:translateX(-50%);bottom:16px;width:min(420px,92vw);border-radius:30px;padding:8px}}
+.tab-ic{width:76px}
 .page-head{display:flex;align-items:center;gap:12px}
 .page-head .avatar{flex:none}
 .page-head{flex-wrap:wrap}
@@ -735,7 +736,10 @@ body.slim-sky .hero h1{font-size:clamp(1.5rem,6vw,2rem)}
 .sky-chip{position:absolute;top:18px;right:14px;z-index:2;border:none;display:flex;align-items:center;gap:5px;padding:4px 12px 4px 5px;border-radius:99px;
   background:rgba(255,255,255,.94);color:#2A2147;font-weight:900;font-size:.88rem;box-shadow:0 8px 18px -10px rgba(0,0,0,.55)}
 .sky-chip img{width:26px;height:26px}
-#reward-chip:not([hidden]) ~ #theme-btn{display:none}   /* the theme button lives on the Me tab while the reward shows */
+#reward-chip:not([hidden]) ~ #theme-btn{display:none}   /* while the reward shows, the theme button is on the child's card */
+.coin-pill{background:linear-gradient(90deg, color-mix(in srgb, var(--sun) 40%, var(--surface)), color-mix(in srgb, var(--sun) 16%, var(--surface)))}
+.coin-pill b{font-family:var(--f-display);font-size:1.05rem}
+.coin-pill.bump{animation:pop .55s cubic-bezier(.2,1.6,.4,1)}
 .sky-chip.bump{animation:pop .55s cubic-bezier(.2,1.6,.4,1)}
 
 /* modal, toast */
@@ -865,32 +869,34 @@ let parentMode = false, parentHash = null;
 let asParent = false, parentLinkBad = false, parentPinPlain = null, fbCfg = null, helperAuth = null;   // grown-up login
 let reward = null, chat = null, chatOff = false;   // prayer reward settings; buddy chat
 // Which bottom tab is open: pray (today + pet), buddies, games, me (scores, badges, calendar, months).
-let tab = "pray"; try { tab = sessionStorage.getItem("salah-tab") || "pray"; } catch {}
+let tab = "salah"; try { tab = sessionStorage.getItem("salah-tab") || "salah"; } catch {}
+const TAB_OF = {pray:"salah", me:"salah", buddies:"play", games:"play"};   // older tab names
+tab = TAB_OF[tab] || (tab === "play" ? "play" : "salah");
 function goTab(next, id){
-  tab = next; try { sessionStorage.setItem("salah-tab", next); } catch {}
+  next = TAB_OF[next] || next; tab = next; try { sessionStorage.setItem("salah-tab", next); } catch {}
   render(); scrollTo(0, 0);
   if (id) setTimeout(() => document.getElementById(id)?.scrollIntoView({behavior:"smooth", block:"start"}), 60);
 }
-const TABS = [["pray","Prayers","hands"], ["buddies","Buddies","e-hug"], ["games","Games","game"], ["me","Me",null]];
+const TABS = [["salah","Salah","hands"], ["play","Play","game"]];
 function paintTabbar(on){
   const $t = document.getElementById("tabbar"); if (!$t) return;
-  document.body.classList.toggle("has-tabs", !!on); document.body.classList.toggle("slim-sky", !!on && tab !== "pray");
+  document.body.classList.toggle("has-tabs", !!on); document.body.classList.toggle("slim-sky", !!on && tab !== "salah");
   $t.hidden = !on; if (!on) return $t.replaceChildren();
-  const count = {pray:pendingQaza(me.uid).length && parentMode ? pendingQaza(me.uid).length : 0, buddies:(chat?.unread() || 0) + (nudges?.unread() || 0), games:games?.inviteCount() || 0, me:0};
+  const count = {salah:0, play:(chat?.unread() || 0) + (nudges?.unread() || 0) + (games?.inviteCount() || 0)};
   $t.replaceChildren(...TABS.map(([k, label, icon]) => el("button",{type:"button", class:`tab ${tab === k ? "on" : ""}`, "aria-current":tab === k ? "page" : null, onclick:() => goTab(k)},
     el("span",{class:"tab-ic"}, img(icon || (AVATARS[me.avatar] ? me.avatar : "cat")), count[k] ? el("span",{class:"tab-badge", "aria-label":`${count[k]} new`}, String(count[k] > 9 ? "9+" : count[k])) : null),
     el("span",{}, label))));
 }
 // The money reward lives in the sky's corner as a coin badge; tapping it shows the details.
 let chipLast = null;
-function paintRewardChip(){
-  const $c = document.getElementById("reward-chip"); if (!$c) return;
-  const kid = me && !asParent && !me.disabled && reward?.plan && reward.show !== false;
-  $c.hidden = !kid; if (!kid){ chipLast = null; return; }
+function paintRewardChip(){ const $c = document.getElementById("reward-chip"); if ($c) $c.hidden = true; }
+// The coin pill on the child's profile card: amount earned this month; tap for the details. It bounces when it goes up.
+function rewardPill(){
+  if (!me || asParent || !reward?.plan || reward.show === false) return null;
   const e = rewardEarned(reward, thisYM(), rewardCount(me.uid, thisYM())), label = money(e.total, reward.currency || "OMR");
-  $c.replaceChildren(img("coin"), label); $c.setAttribute("aria-label", `Prayer reward: ${label} earned this month. Tap for details`);
-  if (chipLast != null && e.total > chipLast){ $c.classList.remove("bump"); void $c.offsetWidth; $c.classList.add("bump"); }
-  chipLast = e.total;
+  const up = chipLast != null && e.total > chipLast; chipLast = e.total;
+  return el("button",{class:`rank-pill coin-pill ${up ? "bump" : ""}`, onclick:openReward, "aria-label":`Prayer reward: ${label} earned this month. Tap for details`},
+    img("coin"), el("span",{}, el("b",{}, label), " earned this month"));
 }
 function openReward(){
   if (!me || !reward?.plan) return;
@@ -987,7 +993,7 @@ function paintSky(){
     const q = kid ? qazaOf(kid.uid, s.pt, p.k) : null, code = st[i] ? (q === "ok" ? "q" : st[i]) : "";
     const lab = `${p.en}: ${code ? (code === "q" ? "done later" : STATUS[code].short.toLowerCase()) : s.cur === p.k ? "time to pray now" : "not ticked yet"}`;
     const b = el("button",{type:"button", class:`bead ${code ? "s-" + code : ""} ${s.cur === p.k && !code ? "is-now" : ""}`, "aria-label":lab, title:lab,
-      onclick:() => { if (!kid || asParent) return; if (tab !== "pray") goTab("pray"); if (view.sel && view.sel !== s.pt){ view.sel = null; render(); } document.getElementById(`pr-${p.k}`)?.scrollIntoView({behavior:"smooth", block:"center"}); }},
+      onclick:() => { if (!kid || asParent) return; if (tab !== "salah") goTab("salah"); if (view.sel && view.sel !== s.pt){ view.sel = null; render(); } document.getElementById(`pr-${p.k}`)?.scrollIntoView({behavior:"smooth", block:"center"}); }},
       el("span",{class:"bi"}, img(`p-${p.k}`)), el("span",{class:"bl"}, p.en));
     const pt = ARC_PT(i); b.style.left = `${pt.x}%`; b.style.top = `${pt.y}%`; return b;
   });
@@ -1111,6 +1117,16 @@ function rewardCount(uid, ym){
   return n;
 }
 const ymName = ym => monthName(+ym.slice(0,4), +ym.slice(5,7) - 1);
+// Settings for the child: picture, theme, profile, log out.
+function openMe(){
+  modal(close => el("div",{class:"stack"},
+    el("div",{class:"page-head"}, avatar(me, 48), el("div",{style:"flex:1;min-width:0"}, el("h2",{}, me.name), el("div",{class:"small muted"}, `@${me.username}`))),
+    el("button",{class:"btn ghost block", onclick:() => { close(); openAvatar(); }}, img(AVATARS[me.avatar] ? me.avatar : "cat"), "Change my picture"),
+    el("button",{class:"btn ghost block", onclick:() => { close(); openThemes(); }}, img("palette"), "Change theme"),
+    el("button",{class:"btn ghost block", onclick:() => { close(); openProfile(); }}, img("cake"), "Edit name, birthday and city"),
+    el("button",{class:"btn ghost block", onclick:() => { close(); logout(); }}, img("lock"), "Log out"),
+    el("div",{class:"actions"}, el("button",{class:"btn primary", onclick:close},"Close"))));
+}
 function openThemes(){
   let pick = document.documentElement.dataset.theme || "day";
   const before = pick;
@@ -1398,7 +1414,7 @@ function openBuddy(uid){
     !isMe && !Array.isArray(p.badges) ? el("div",{class:"note small"}, `${p.name}'s badges will show here after they next open Salah Tracker.`) : null,
     el("div",{class:"badges"}, BADGES.map(b => el("div",{class:`badge ${earned.has(b.name) ? "got" : "locked"}`}, img(b.icon), el("b",{}, b.name), el("span",{}, b.hint)))),
     el("div",{class:"actions"},
-      !isMe ? el("button",{class:"btn ghost", onclick:() => { close(); games?.playWith(uid); goTab("games"); }}, img("game"), `Play a game with ${p.name}`) : null,
+      !isMe ? el("button",{class:"btn ghost", onclick:() => { close(); games?.playWith(uid); goTab("play", "games"); }}, img("game"), `Play a game with ${p.name}`) : null,
       el("button",{class:"btn primary", onclick:close},"Close"))));
 }
 
@@ -1734,20 +1750,22 @@ function renderKid(){
       el("button",{class:"btn ghost sm", onclick:openParent}, img("lock"), parentMode ? "Grown-up mode on" : pendingQaza(me.uid).length ? `Grown-up · ${pendingQaza(me.uid).length} to confirm` : "Grown-up"),
       el("span",{style:"flex:1"}),
       chatOff || !(me.friends || []).length ? null : el("button",{class:`btn ghost sm msg-btn ${chat?.unread() ? "has-new" : ""}`, onclick:() => chat?.openList(), "aria-label":"Chat with buddies", title:"Chat"}, img("chat"), chat?.unread() ? String(chat.unread()) : null),
-      el("button",{class:`btn ghost sm msg-btn ${nudges?.unread() ? "has-new" : ""}`, onclick:() => nudges?.openInbox(), "aria-label":"Stickers from buddies", title:"Stickers"}, img("envelope"), nudges?.unread() ? String(nudges.unread()) : null)),
+      el("button",{class:`btn ghost sm msg-btn ${nudges?.unread() ? "has-new" : ""}`, onclick:() => nudges?.openInbox(), "aria-label":"Stickers from buddies", title:"Stickers"}, img("envelope"), nudges?.unread() ? String(nudges.unread()) : null),
+      el("button",{class:"btn ghost sm msg-btn", onclick:openMe, "aria-label":"My settings", title:"Settings"}, "⋯")),
     el("div",{class:"kid-hero"},
       el("button",{class:"av-btn", onclick:openAvatar, "aria-label":"Change my picture"}, avatar(me, 110), el("span",{class:"edit"},"change")),
       el("div",{style:"min-width:0"},
         el("div",{class:"hello"}, `Hi ${me.name}!`),
         el("div",{class:"uname"}, `@${me.username}`, age != null ? ` · Age ${age}` : ""),
+        rewardPill(),
         bday ? el("div",{class:"rank-pill bday-pill"}, img("cake"), `Happy birthday, ${me.name}!`) : null,
         me.parentMsg?.text ? el("button",{class:"rank-pill letter-pill", onclick:showParentMsg}, img("letter"), `Message from ${me.parentMsg.from || "family"}${me.parentMsg.seen ? "" : " · new!"}`) : null,
         streak(uid) ? el("div",{class:"rank-pill streak-pill"}, img("fire"), `${streak(uid)}-day streak! Keep it burning`) : null,
-        games?.inviteCount() ? el("button",{class:"rank-pill game-pill", onclick:()=>goTab("games")},
+        games?.inviteCount() ? el("button",{class:"rank-pill game-pill", onclick:()=>goTab("play", "games")},
           img("game"), `${games.inviteCount()} game invite${games.inviteCount()>1?"s":""}! Tap to play`) : null,
-        rankText(rankInfo?.[boardPeriod]) ? el("button",{class:"rank-pill world-pill", onclick:()=>goTab("buddies")},
+        rankText(rankInfo?.[boardPeriod]) ? el("button",{class:"rank-pill world-pill", onclick:()=>goTab("play", "race")},
           img(rankText(rankInfo[boardPeriod]).icon), `${rankText(rankInfo[boardPeriod]).big} of all kids this ${boardPeriod}`) : null,
-        racing && myRow?.place ? el("button",{class:"rank-pill", onclick:()=>goTab("buddies")},
+        racing && myRow?.place ? el("button",{class:"rank-pill", onclick:()=>goTab("play", "race")},
           img(myRow.place <= 3 ? `medal${myRow.place}` : "flag"), `${ordinal(myRow.place)} among your Salah Buddies`) : null,
         me.dob ? null : el("button",{class:"linkbtn", style:"display:block;padding-left:0", onclick:openProfile},"Add your birthday"))));
 
@@ -1873,19 +1891,13 @@ function renderKid(){
     el("div",{style:"flex:1;min-width:0"}, el("b",{},"Chat with your buddies"),
       el("div",{class:"small muted"}, chat?.unread() ? `${chat.unread()} new message${chat.unread() > 1 ? "s" : ""}` : "Say salam and cheer each other on")),
     el("button",{class:"btn primary sm", onclick:() => chat?.openList()}, "Open chats")) : null;
-  const meHead = el("section",{class:"panel page-head"}, avatar(me, 48),
-    el("div",{style:"flex:1 1 140px;min-width:0"}, el("h2",{style:"overflow-wrap:anywhere"}, me.name), el("div",{class:"small muted"}, `@${me.username}`)),
-    el("button",{class:"btn ghost sm", onclick:openThemes}, img("palette"), "Theme"),
-    el("button",{class:"btn ghost sm", onclick:openProfile}, "Edit"),
-    el("button",{class:"linkbtn", onclick:logout}, "Log out"));
   const wide = (left, right) => WIDE.matches ? [el("div",{class:"cols"}, el("div",{class:"col"}, ...left), el("div",{class:"col side"}, ...right))] : [...left, ...right];
+  const gamesEl = games?.panel() || el("div",{class:"panel muted"},"Games are loading…");
   const pages = {
-    pray: wide([hero, check, daySheet], [petPanel(petCtx())]),
-    buddies: [chatStrip, raceBoard()],
-    games: [games?.panel() || el("div",{class:"panel muted"},"Games are loading…")],
-    me: [meHead, ...wide([scores, badges], [renderCalendar(), history(), gradeGuide()])],
+    salah: wide([hero, check, daySheet, renderCalendar()], [scores, badges, history(), gradeGuide()]),
+    play: wide([petPanel(petCtx()), gamesEl], [chatStrip, raceBoard()]),
   };
-  show(bar, ...(pages[tab] || pages.pray));
+  show(bar, ...(pages[tab] || pages.salah));
   paintTabbar(true);
 }
 
