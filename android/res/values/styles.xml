@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Full screen, no title bar; the sky-blue shows while the app opens -->
+    <style name="AppTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@drawable/launch</item>
+        <item name="android:statusBarColor">#2E9BF0</item>
+        <item name="android:colorPrimary">#2E9BF0</item>
+        <item name="android:colorAccent">#D93A62</item>
+    </style>
+</resources>

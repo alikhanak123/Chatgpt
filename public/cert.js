@@ -75,6 +75,8 @@ export async function drawCertificate({name, badges, date, hijri}){
   return c;
 }
 
+// Inside the Android app, files and printing go through the phone (window.AndroidApp); browsers in apps can't download or print on their own.
+const app = () => window.AndroidApp;
 const fileName = (name, label) => `${name}-${label}`.replace(/[^\w-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "certificate";
 
 // Modal with a preview and the three ways to keep it.
@@ -91,15 +93,19 @@ export async function openCertificate(ctx, {name, badges, date, hijri}){
       el("button",{class:"btn primary", onclick:async e => {
         if (!canvas) return; const b = e.currentTarget; b.disabled = true; b.textContent = "Making PDF…";
         try { const PDF = await loadPdf(); const doc = new PDF({orientation:"landscape", unit:"mm", format:"a4"});
-          doc.addImage(canvas.toDataURL("image/jpeg", .92), "JPEG", 0, 0, 297, 210); doc.save(`${fileName(name, label)}.pdf`); toast("Certificate saved as PDF", "scroll"); }
+          doc.addImage(canvas.toDataURL("image/jpeg", .92), "JPEG", 0, 0, 297, 210);
+          if (app()) app().saveFile(doc.output("datauristring").split(",")[1], "application/pdf", `${fileName(name, label)}.pdf`);
+          else { doc.save(`${fileName(name, label)}.pdf`); toast("Certificate saved as PDF", "scroll"); } }
         catch { toast("Couldn't make the PDF. Try Download picture instead.", "lock"); }
         b.disabled = false; b.replaceChildren(img("scroll"), "Download PDF");
       }}, img("scroll"), "Download PDF"),
       el("button",{class:"btn ghost", onclick:() => {
-        if (!canvas) return; const a = document.createElement("a"); a.download = `${fileName(name, label)}.png`; a.href = canvas.toDataURL("image/png"); a.click(); toast("Picture saved", "check");
+        if (!canvas) return; if (app()) return app().saveFile(canvas.toDataURL("image/png").split(",")[1], "image/png", `${fileName(name, label)}.png`);
+        const a = document.createElement("a"); a.download = `${fileName(name, label)}.png`; a.href = canvas.toDataURL("image/png"); a.click(); toast("Picture saved", "check");
       }}, img("sparkles"), "Download picture"),
       el("button",{class:"btn ghost", onclick:() => {
         if (!canvas) return;
+        if (app()) return app().printImage(canvas.toDataURL("image/png").split(",")[1], "Salah Tracker certificate");
         const f = document.createElement("iframe"); f.style.cssText = "position:fixed;width:0;height:0;border:0;right:0;bottom:0"; document.body.append(f);
         const d = f.contentDocument; d.open();
         d.write(`<!doctype html><title>Certificate</title><style>@page{size:A4 landscape;margin:0}html,body{margin:0}img{width:100%;height:100vh;object-fit:contain;display:block}</style><img src="${canvas.toDataURL("image/png")}">`);

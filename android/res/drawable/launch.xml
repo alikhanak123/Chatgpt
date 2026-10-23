@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Opening screen: the sky gradient with the app's moon-and-mosque mark in the middle -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:angle="270" android:startColor="#2E9BF0" android:centerColor="#7CCBFF" android:endColor="#DDF3FF" />
+        </shape>
+    </item>
+    <item android:gravity="center" android:width="160dp" android:height="160dp" android:drawable="@mipmap/ic_launcher_foreground" />
+</layer-list>

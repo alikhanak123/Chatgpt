@@ -1914,6 +1914,7 @@ function raceBoard(){
     else msg = ["rocket", `You're ${ordinal(mine.place)}. ${ahead[0].p.name} is just ${fmtPts(ahead[0].points - mine.points)} point${ahead[0].points - mine.points === 1 ? "" : "s"} ahead. Catch up!`];
   }
   const share = async () => {
+    if (window.AndroidApp) return window.AndroidApp.share(inviteText());   // Android app: the phone's share sheet
     try { await navigator.share({title:"Salah Tracker", text:inviteText().replace(inviteLink(),"").trim(), url:inviteLink()}); }
     catch (e) { if (e?.name !== "AbortError") copyLink(); }
   };
@@ -1949,7 +1950,7 @@ function raceBoard(){
       el("div",{class:"small muted"}, "Pray together and cheer each other on. When they tap your link and join, you'll see each other here."),
       el("div",{class:"invite-btns"},
         el("a",{class:"btn wa", href:`https://wa.me/?text=${encodeURIComponent(inviteText())}`, target:"_blank", rel:"noopener"}, "WhatsApp"),
-        navigator.share ? el("button",{class:"btn ghost", onclick:share},"Other apps") : null,
+        navigator.share || window.AndroidApp ? el("button",{class:"btn ghost", onclick:share},"Other apps") : null,
         el("button",{class:"btn ghost", onclick:copyLink},"Copy link"))),
     racing ? el("button",{class:"linkbtn", style:"align-self:flex-start", onclick:()=>{view.editRace=!view.editRace; render();}}, view.editRace ? "Done" : "Remove a buddy") : null);
 }
@@ -2184,6 +2185,14 @@ setInterval(() => {
 document.getElementById("guide-fab").addEventListener("click", () => openGuide({el, img}));
 document.getElementById("theme-btn").addEventListener("click", () => openThemes());
 document.getElementById("reward-chip").addEventListener("click", () => openReward());
+// Android app Back button: close a window or game first, then go back to the Salah tab. Returns true when it handled it.
+window.__appBack = () => {
+  const g = document.querySelector(".game-screen"); if (g){ g.querySelector(".gs-top .btn")?.click(); return true; }
+  const gd = document.querySelector("#guide-root > *"); if (gd){ gd.querySelector(".gs-top .btn, button")?.click(); return true; }
+  if ($modal.firstChild){ $modal.querySelector(".overlay")?.dispatchEvent(new KeyboardEvent("keydown", {key:"Escape", bubbles:true})); return true; }
+  if (me && !asParent && tab !== "salah"){ goTab("salah"); return true; }
+  return false;
+};
 // Phones pause pages in the background: refresh the date, sky and day as soon as the app is shown again.
 document.addEventListener("visibilitychange", () => { if (document.visibilityState !== "visible") return; paintHeaderDates(); if (me){ refreshTimes(true); if (!$modal.firstChild) render(); } });
 try {
