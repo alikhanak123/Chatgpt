@@ -702,6 +702,14 @@ button.badge{border:none;font:inherit;color:inherit;cursor:pointer}
 .quiz-opt{border:3px solid transparent;background:var(--surface);border-radius:18px;padding:13px 14px;font-weight:900;font-size:1.05rem;box-shadow:0 4px 0 var(--line);text-align:left}
 .quiz-opt.right{border-color:var(--ok);background:var(--ok-bg)}
 .quiz-opt.wrong{border-color:var(--miss);background:var(--miss-bg)}
+/* verse of the day */
+.verse-ar{font-family:"Amiri","Scheherazade New","Traditional Arabic",serif;font-size:1.7rem;line-height:2.1;text-align:center;font-weight:400;color:var(--ink)}
+.verse-simple{font-family:var(--f-display);font-weight:600;font-size:1.2rem;line-height:1.35;padding:12px 14px;border-radius:16px;background:color-mix(in srgb, var(--sun) 16%, var(--surface))}
+.verse-simple b{color:var(--accent)}
+.verse-en{font-style:italic}
+.verse-src{font-size:.74rem}
+.quiz-opt.picked{border-color:var(--sky);background:color-mix(in srgb, var(--sky) 12%, var(--surface))}
+.quiz-end{gap:8px;text-align:center}
 .quiz-opt:disabled{cursor:default;color:inherit}
 .quiz-timer{height:8px;border-radius:99px;background:var(--surface-2);overflow:hidden}
 .quiz-timer i{display:block;height:100%;background:var(--sun);animation:shrink linear forwards}
@@ -789,6 +797,7 @@ import { initNudges } from "/nudges.js";
 import { rewardCard, rewardPanel, earned as rewardEarned, rewardStart, money } from "/rewards.js";
 import { openCertificate } from "/cert.js";
 import { initChat } from "/chat.js";
+import { verseCard } from "/verse.js";
 let nudges = null;   // stickers between buddies (Realtime Database)
 import { loadTimes, prayerWindow, prayerToday, fmtTime, fmtIn, RAKATS, KIND_LABEL, openGuide } from "/prayer.js";
 let games = null;   // friends games (Realtime Database)
@@ -1894,7 +1903,7 @@ function renderKid(){
   const wide = (left, right) => WIDE.matches ? [el("div",{class:"cols"}, el("div",{class:"col"}, ...left), el("div",{class:"col side"}, ...right))] : [...left, ...right];
   const gamesEl = games?.panel() || el("div",{class:"panel muted"},"Games are loading…");
   const pages = {
-    salah: wide([hero, check, daySheet, renderCalendar()], [scores, badges, history(), gradeGuide()]),
+    salah: wide([hero, check, daySheet, verseCard({el, img}), renderCalendar()], [scores, badges, history(), gradeGuide()]),
     play: wide([petPanel(petCtx()), gamesEl], [chatStrip, raceBoard()]),
   };
   show(bar, ...(pages[tab] || pages.salah));

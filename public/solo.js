@@ -3,6 +3,48 @@ import { loadChess, aiMove, chessBoard, chessStatus } from "/chesskit.js";
 import { renderSLBoard, slMove } from "/games.js";
 
 export const LEVEL_NAMES = {easy:"Easy", medium:"Medium", hard:"Hard"};
+// Words for Balloon Words (with a hint each) and questions for the Salah Quiz: used vs the computer and with buddies.
+export const WORD_BANK = {
+  easy:[["SUN","It shines in the day"],["MOON","It shines at night"],["STAR","Twinkle, twinkle…"],["CAT","A pet that purrs"],["FISH","It swims in the sea"],["DATE","A sweet fruit from palm trees"],
+    ["BOOK","You read it"],["PRAY","What we do five times a day"],["RAIN","Water falling from clouds"],["CAKE","A birthday treat"],["DUCK","It says quack"],["BIRD","It flies and sings"]],
+  medium:[["MOSQUE","Where we pray together"],["QURAN","The holy book"],["KAABA","We face it when we pray"],["CAMEL","The ship of the desert"],["FAJR","The dawn prayer"],["WUDU","Washing before prayer"],
+    ["OMAN","A country of mountains and sea"],["ZAKAT","Giving to people in need"],["MAKKAH","The city of the Kaaba"],["FALCON","A fast bird of prey"],["DESERT","Sand everywhere!"],["PRAYER","Salah in English"]],
+  hard:[["RAMADAN","The month of fasting"],["MAGHRIB","The sunset prayer"],["TAHAJJUD","A prayer in the night"],["MUSCAT","The capital of Oman"],["SUJOOD","Forehead on the ground"],["ISHRAQ","A prayer after sunrise"],
+    ["MADINAH","The city of the Prophet ﷺ"],["MINARET","The tall tower of a mosque"],["CRESCENT","A thin moon shape"],["GRATEFUL","Saying Alhamdulillah"],["PATIENCE","Sabr"],["KINDNESS","Being nice to everyone"]],
+    };
+export const QUIZ_BANK = [   // question, right answer, then wrong answers
+  ["How many prayers do we pray every day?", "5", "3", "7", "4"],
+  ["Which prayer is at dawn, before sunrise?", "Fajr", "Isha", "Asr", "Maghrib"],
+  ["Which prayer is at midday?", "Dhuhr", "Fajr", "Maghrib", "Isha"],
+  ["Which prayer is in the afternoon?", "Asr", "Fajr", "Isha", "Dhuhr"],
+  ["Which prayer is just after sunset?", "Maghrib", "Asr", "Fajr", "Dhuhr"],
+  ["Which prayer is at night?", "Isha", "Fajr", "Dhuhr", "Asr"],
+  ["How many Fard rakats are in Fajr?", "2", "3", "4", "1"],
+  ["How many Fard rakats are in Dhuhr?", "4", "2", "3", "5"],
+  ["How many Fard rakats are in Asr?", "4", "2", "3", "5"],
+  ["How many Fard rakats are in Maghrib?", "3", "2", "4", "5"],
+  ["How many Fard rakats are in Isha?", "4", "3", "2", "6"],
+  ["What do we do before praying, to be clean?", "Wudu", "Sujood", "Ruku", "Zakat"],
+  ["Which way do we face when we pray?", "Towards the Kaaba", "Towards the sun", "Any way we like", "Towards the sea"],
+  ["Which surah do we recite in every rakat?", "Al-Fatiha", "Al-Ikhlas", "An-Nas", "Al-Kawthar"],
+  ["What do we say to start the prayer?", "Allahu Akbar", "Alhamdulillah", "SubhanAllah", "Ameen"],
+  ["What is it called when we bow with our hands on our knees?", "Ruku", "Sujood", "Qiyam", "Tashahhud"],
+  ["What is it called when our forehead touches the ground?", "Sujood", "Ruku", "Qiyam", "Wudu"],
+  ["How do we finish the prayer?", "Saying salam to the right and left", "Clapping our hands", "Standing up quickly", "Saying Bismillah"],
+  ["Which prayer is followed by Witr?", "Isha", "Fajr", "Dhuhr", "Maghrib"],
+  ["How many rakats is Witr?", "3", "1", "2", "4"],
+  ["What is the special Friday prayer called?", "Jumu'ah", "Eid", "Tahajjud", "Ishraq"],
+  ["In which month do Muslims fast?", "Ramadan", "Rajab", "Shawwal", "Muharram"],
+  ["In which city is the Kaaba?", "Makkah", "Madinah", "Muscat", "Cairo"],
+  ["What is the call to prayer called?", "Adhan", "Dua", "Dhikr", "Khutbah"],
+  ["Which bonus prayer is prayed in the night?", "Tahajjud", "Ishraq", "Maghrib", "Jumu'ah"],
+  ["Which bonus prayer is prayed after sunrise?", "Ishraq", "Tahajjud", "Isha", "Witr"],
+  ["What do we say after sneezing?", "Alhamdulillah", "Ameen", "SubhanAllah", "Allahu Akbar"],
+  ["What do we say before eating?", "Bismillah", "Alhamdulillah", "Ameen", "Allahu Akbar"],
+    ];   // question, right answer, then wrong answers
+const shuffleList = a => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(v => v[1]);
+// n questions, each with the right answer and (opts - 1) wrong ones, all shuffled
+export const makeQuiz = (n, opts) => shuffleList(QUIZ_BANK).slice(0, n).map(([q, a, ...w]) => ({q, a, opts:shuffleList([a, ...shuffleList(w).slice(0, opts - 1)])}));
 const COLORS = ["#FF5C8A", "#3E9BFF", "#17A35F", "#FFC23C"];
 const C4C = 7, C4R = 6;
 
@@ -60,14 +102,7 @@ export function openSolo(type, {level = "medium", bots = 1} = {}, ctx){
 
   // ---------- Balloon Words: guess the word before the balloons pop ----------
   if (type === "words"){
-    const WORDS = {
-      easy:[["SUN","It shines in the day"],["MOON","It shines at night"],["STAR","Twinkle, twinkle…"],["CAT","A pet that purrs"],["FISH","It swims in the sea"],["DATE","A sweet fruit from palm trees"],
-        ["BOOK","You read it"],["PRAY","What we do five times a day"],["RAIN","Water falling from clouds"],["CAKE","A birthday treat"],["DUCK","It says quack"],["BIRD","It flies and sings"]],
-      medium:[["MOSQUE","Where we pray together"],["QURAN","The holy book"],["KAABA","We face it when we pray"],["CAMEL","The ship of the desert"],["FAJR","The dawn prayer"],["WUDU","Washing before prayer"],
-        ["OMAN","A country of mountains and sea"],["ZAKAT","Giving to people in need"],["MAKKAH","The city of the Kaaba"],["FALCON","A fast bird of prey"],["DESERT","Sand everywhere!"],["PRAYER","Salah in English"]],
-      hard:[["RAMADAN","The month of fasting"],["MAGHRIB","The sunset prayer"],["TAHAJJUD","A prayer in the night"],["MUSCAT","The capital of Oman"],["SUJOOD","Forehead on the ground"],["ISHRAQ","A prayer after sunrise"],
-        ["MADINAH","The city of the Prophet ﷺ"],["MINARET","The tall tower of a mosque"],["CRESCENT","A thin moon shape"],["GRATEFUL","Saying Alhamdulillah"],["PATIENCE","Sabr"],["KINDNESS","Being nice to everyone"]],
-    };
+    const WORDS = WORD_BANK;
     const LIVES = {easy:8, medium:7, hard:6}[level] || 7;
     let word, hint, guessed, wrong, pool = [];
     const start = () => { if (!pool.length) pool = [...WORDS[level] || WORDS.medium].sort(() => Math.random() - .5); [word, hint] = pool.pop(); guessed = new Set(); wrong = 0; draw(); };
@@ -95,36 +130,7 @@ export function openSolo(type, {level = "medium", bots = 1} = {}, ctx){
 
   // ---------- Salah Quiz ----------
   if (type === "quiz"){
-    const Q = [   // question, right answer, then wrong answers
-      ["How many prayers do we pray every day?", "5", "3", "7", "4"],
-      ["Which prayer is at dawn, before sunrise?", "Fajr", "Isha", "Asr", "Maghrib"],
-      ["Which prayer is at midday?", "Dhuhr", "Fajr", "Maghrib", "Isha"],
-      ["Which prayer is in the afternoon?", "Asr", "Fajr", "Isha", "Dhuhr"],
-      ["Which prayer is just after sunset?", "Maghrib", "Asr", "Fajr", "Dhuhr"],
-      ["Which prayer is at night?", "Isha", "Fajr", "Dhuhr", "Asr"],
-      ["How many Fard rakats are in Fajr?", "2", "3", "4", "1"],
-      ["How many Fard rakats are in Dhuhr?", "4", "2", "3", "5"],
-      ["How many Fard rakats are in Asr?", "4", "2", "3", "5"],
-      ["How many Fard rakats are in Maghrib?", "3", "2", "4", "5"],
-      ["How many Fard rakats are in Isha?", "4", "3", "2", "6"],
-      ["What do we do before praying, to be clean?", "Wudu", "Sujood", "Ruku", "Zakat"],
-      ["Which way do we face when we pray?", "Towards the Kaaba", "Towards the sun", "Any way we like", "Towards the sea"],
-      ["Which surah do we recite in every rakat?", "Al-Fatiha", "Al-Ikhlas", "An-Nas", "Al-Kawthar"],
-      ["What do we say to start the prayer?", "Allahu Akbar", "Alhamdulillah", "SubhanAllah", "Ameen"],
-      ["What is it called when we bow with our hands on our knees?", "Ruku", "Sujood", "Qiyam", "Tashahhud"],
-      ["What is it called when our forehead touches the ground?", "Sujood", "Ruku", "Qiyam", "Wudu"],
-      ["How do we finish the prayer?", "Saying salam to the right and left", "Clapping our hands", "Standing up quickly", "Saying Bismillah"],
-      ["Which prayer is followed by Witr?", "Isha", "Fajr", "Dhuhr", "Maghrib"],
-      ["How many rakats is Witr?", "3", "1", "2", "4"],
-      ["What is the special Friday prayer called?", "Jumu'ah", "Eid", "Tahajjud", "Ishraq"],
-      ["In which month do Muslims fast?", "Ramadan", "Rajab", "Shawwal", "Muharram"],
-      ["In which city is the Kaaba?", "Makkah", "Madinah", "Muscat", "Cairo"],
-      ["What is the call to prayer called?", "Adhan", "Dua", "Dhikr", "Khutbah"],
-      ["Which bonus prayer is prayed in the night?", "Tahajjud", "Ishraq", "Maghrib", "Jumu'ah"],
-      ["Which bonus prayer is prayed after sunrise?", "Ishraq", "Tahajjud", "Isha", "Witr"],
-      ["What do we say after sneezing?", "Alhamdulillah", "Ameen", "SubhanAllah", "Allahu Akbar"],
-      ["What do we say before eating?", "Bismillah", "Alhamdulillah", "Ameen", "Allahu Akbar"],
-    ];
+    const Q = QUIZ_BANK;
     const N = {easy:8, medium:10, hard:12}[level] || 10, OPTS = level === "easy" ? 3 : 4, TIME = level === "hard" ? 12 : 0;
     const shuffle = a => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(v => v[1]);
     let qs, i, right, picked;

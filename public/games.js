@@ -6,7 +6,7 @@
 //                        Snakes & Ladders: p1 = host, pl:{<uid>:{ok}} invited players, order:[uids], pos:{uid:square}, turn = index
 //   live/<gid>         = air hockey positions (puck + paddles), written many times a second
 import { getDatabase, ref, onValue, set, update, remove, push, runTransaction, onDisconnect, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { openSolo, LEVEL_NAMES } from "/solo.js";
+import { openSolo, LEVEL_NAMES, WORD_BANK, makeQuiz } from "/solo.js";
 import { loadChess, chessBoard, chessStatus } from "/chesskit.js";
 
 export const GAMES = {
@@ -16,9 +16,9 @@ export const GAMES = {
   memory: {name:"Memory Match", icon:"cards", blurb:"Find matching pairs. Most pairs wins."},
   snakes: {name:"Snakes & Ladders", icon:"snake", blurb:"Roll the dice! 2 to 4 players.", multi:true},
   hockey: {name:"Air Hockey", icon:"hockey",   blurb:"Live! Slide your paddle and score goals."},
-  rps:    {name:"Rock Paper Scissors", icon:"g-scissors", blurb:"First to 3 wins. Can you beat the computer?", solo:true},
-  words:  {name:"Balloon Words", icon:"balloon", blurb:"Guess the word before the balloons pop!", solo:true},
-  quiz:   {name:"Salah Quiz", icon:"quiz", blurb:"How much do you know about prayer?", solo:true},
+  rps:    {name:"Rock Paper Scissors", icon:"g-scissors", blurb:"Pick at the same time. First to 3 wins!"},
+  words:  {name:"Balloon Words", icon:"balloon", blurb:"Guess the word before the balloons pop!"},
+  quiz:   {name:"Salah Quiz", icon:"quiz", blurb:"Race to answer questions about prayer."},
 };
 const C4_COLS = 7, C4_ROWS = 6;
 const HOCKEY_WIN = 5;
@@ -108,6 +108,8 @@ export function initGames(ctx){
                   board: pick.type === "c4" ? ".".repeat(C4_COLS*C4_ROWS) : pick.type === "ttt" ? ".".repeat(9) : ""};
     if (pick.type === "memory"){ game.deck = newDeck(); game.opened = []; game.matched = {}; game.showing = null; }
     if (pick.type === "chess") game.fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";   // "first" plays white
+    if (pick.type === "words") Object.assign(game, newWord());
+    if (pick.type === "quiz") Object.assign(game, newQuiz());
     try {
       await set(ref(db, `games/${gid}`), game);
       await update(ref(db), {[`inbox/${me}/${gid}`]:{type:pick.type, other, status:"sent", ts}, [`inbox/${other}/${gid}`]:{type:pick.type, other:me, status:"invite", ts}});
@@ -251,6 +253,10 @@ export function initGames(ctx){
       : g.winner === "draw" ? "It's a draw!"
       : g.winner ? (g.winner === side ? "You win! 🎉" : `${nameOf(otherId)} wins!`)
       : g.type === "hockey" ? "First to 5 goals wins!"
+      : g.type === "rps" ? (g.picks?.[side] ? `Waiting for ${nameOf(otherId)} to pick…` : "Pick rock, paper or scissors!")
+      : g.type === "quiz" ? `Question ${Math.min((g.i || 0) + 1, (g.qs || []).length)} of ${(g.qs || []).length}`
+      : g.type === "words" && myTurn ? `Your turn! Hint: ${g.hint}`
+      : g.type === "words" ? `${nameOf(otherId)} is guessing… Hint: ${g.hint}`
       : g.type === "chess" && Chess && g.fen ? chessStatus(new Chess(g.fen), g.first === side ? "w" : "b", nameOf(otherId))
       : myTurn ? "Your turn!" : `${nameOf(otherId)}'s turn…`;
     const pcard = (p, label, sc, active) => el("div",{class:`gs-player ${active?"active":""}`}, avatar(p, 48), el("div",{}, el("b",{}, label), el("div",{class:"gs-score num"}, sc)));
@@ -260,6 +266,9 @@ export function initGames(ctx){
     else if (g.type === "memory") board = memoryBoard(g, side, myTurn);
     else if (g.type === "chess") board = chessOnline(g, side, myTurn);
     else if (g.type === "c4") board = c4Board(g, side, myTurn);
+    else if (g.type === "rps") board = rpsOnline(g, side, otherId);
+    else if (g.type === "words") board = wordsOnline(g, side, myTurn, otherId);
+    else if (g.type === "quiz") board = quizOnline(g, side, otherId);
     else board = hockeyBoard(g, side);
 
     const screen = el("div",{class:"game-screen", role:"dialog", "aria-label":GAMES[g.type].name},
@@ -271,7 +280,7 @@ export function initGames(ctx){
         pcard(meP, "You", g.score?.[side] ?? 0, myTurn),
         el("div",{class:"gs-vs"},"vs"),
         pcard(them, nameOf(otherId), g.score?.[side === "p1" ? "p2" : "p1"] ?? 0, g.status === "playing" && !g.winner && g.turn !== side && g.type !== "hockey")),
-      el("div",{class:`gs-status ${myTurn?"go":""}`}, status),
+      el("div",{class:`gs-status ${myTurn || (g.status === "playing" && !g.winner && ((g.type === "rps" && !g.picks?.[side]) || (g.type === "quiz" && !g.ans?.[side]))) ? "go" : ""}`}, status),
       board,
       g.winner ? el("div",{class:"actions", style:"justify-content:center"},
         el("button",{class:"btn primary", onclick:()=>rematch()}, "Play again"),
@@ -286,6 +295,9 @@ export function initGames(ctx){
       if (g.type === "snakes"){ g.pos = Object.fromEntries((g.order||[]).map(u => [u, 0])); g.turn = 0; g.winner = null; g.dice = null; g.last = null; return g; }
       if (g.type === "memory"){ g.deck = newDeck(); g.opened = []; g.matched = {}; g.showing = null; }
       if (g.type === "chess"){ g.fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; g.last = null; }
+      if (g.type === "rps"){ g.score = {p1:0, p2:0}; g.picks = null; g.last = null; }
+      if (g.type === "words") Object.assign(g, newWord());
+      if (g.type === "quiz"){ Object.assign(g, newQuiz()); g.score = {p1:0, p2:0}; }
       const first = g.first === "p1" ? "p2" : "p1";
       g.first = first; g.turn = first; g.winner = null; g.round = (g.round||1) + 1;
       g.board = g.type === "c4" ? ".".repeat(C4_COLS*C4_ROWS) : g.type === "ttt" ? ".".repeat(9) : "";
@@ -368,6 +380,109 @@ export function initGames(ctx){
         }).catch(() => toast("That move didn't send. Try again.", "lock"));
       }}),
       el("div",{class:"small muted"}, myColor === "w" ? "You are white." : "You are black."));
+  }
+
+  // ---------- Rock Paper Scissors (2 players): both pick, then both are shown. First to 3 wins. ----------
+  const RPS = {rock:{icon:"g-rock", name:"Rock", beats:"scissors"}, paper:{icon:"g-paper", name:"Paper", beats:"rock"}, scissors:{icon:"g-scissors", name:"Scissors", beats:"paper"}};
+  function rpsPick(m){
+    const side = open.game.p1 === uid() ? "p1" : "p2";
+    runTransaction(ref(db, `games/${open.gid}`), g => {
+      if (!g) return g;
+      if (g.status !== "playing" || g.winner || g.picks?.[side]) return;
+      g.picks = {...(g.picks || {}), [side]:m};
+      if (g.picks.p1 && g.picks.p2){                      // both chose: reveal and score
+        const a = g.picks.p1, b = g.picks.p2, res = a === b ? "draw" : RPS[a].beats === b ? "p1" : "p2";
+        g.score = g.score || {p1:0, p2:0}; if (res !== "draw") g.score[res] = (g.score[res] || 0) + 1;
+        g.last = {p1:a, p2:b, res, n:(g.last?.n || 0) + 1}; g.picks = null;
+        if ((g.score.p1 || 0) >= 3) g.winner = "p1"; else if ((g.score.p2 || 0) >= 3) g.winner = "p2";
+      }
+      return g;
+    }).catch(() => toast("That didn't send. Try again.", "lock"));
+  }
+  function rpsOnline(g, side, otherId){
+    const other = side === "p1" ? "p2" : "p1", mine = g.picks?.[side], L = g.last;
+    const hand = (m, who, hidden) => el("div",{class:"rps-hand"}, m ? img(RPS[m].icon) : el("span",{class:"rps-q"}, hidden ? "✓" : "?"), el("span",{class:"small muted"}, who));
+    const result = L ? (L.res === "draw" ? `Both picked ${RPS[L.p1].name}. Draw!` : L.res === side ? `${RPS[L[side]].name} beats ${RPS[L[other]].name}! Point to you.`
+      : `${RPS[L[other]].name} beats ${RPS[L[side]].name}. Point to ${nameOf(otherId)}.`) : "First to 3 wins.";
+    return el("div",{class:"rps"},
+      el("div",{class:"rps-arena"}, hand(mine || L?.[side], "You"), el("span",{class:"gs-vs"},"vs"), hand(mine ? null : L?.[other], nameOf(otherId), !!g.picks?.[other])),
+      el("div",{class:"small", style:"text-align:center;font-weight:900"}, mine ? `You picked ${RPS[mine].name}. Waiting…` : result),
+      g.winner || g.status !== "playing" ? null : el("div",{class:"rps-pick"}, Object.keys(RPS).map(m => el("button",{class:"rps-btn", disabled:!!mine, "aria-label":RPS[m].name, onclick:() => rpsPick(m)},
+        img(RPS[m].icon), el("b",{}, RPS[m].name)))));
+  }
+
+  // ---------- Balloon Words (2 players): one word, take turns guessing letters ----------
+  // Right letter = a point for each time it appears, and you go again. Wrong letter = a balloon pops and it's their turn.
+  // When the word is found (or all balloons pop) the player with more letters wins the round.
+  function newWord(){
+    const all = [...WORD_BANK.easy, ...WORD_BANK.medium, ...WORD_BANK.hard], [word, hint] = all[Math.random() * all.length | 0];
+    return {word, hint, guessed:"", wrong:0, lives:7, pts:{p1:0, p2:0}};
+  }
+  function wordsGuess(ch){
+    const side = open.game.p1 === uid() ? "p1" : "p2";
+    runTransaction(ref(db, `games/${open.gid}`), g => {
+      if (!g) return g;
+      if (g.status !== "playing" || g.winner || g.turn !== side || (g.guessed || "").includes(ch)) return;
+      g.guessed = (g.guessed || "") + ch; g.pts = g.pts || {p1:0, p2:0};
+      const hits = [...g.word].filter(c => c === ch).length;
+      if (hits) g.pts[side] = (g.pts[side] || 0) + hits;
+      else { g.wrong = (g.wrong || 0) + 1; g.turn = side === "p1" ? "p2" : "p1"; }
+      const solved = [...g.word].every(c => g.guessed.includes(c));
+      if (solved || g.wrong >= (g.lives || 7)){
+        const a = g.pts.p1 || 0, b = g.pts.p2 || 0;
+        g.winner = a === b ? "draw" : a > b ? "p1" : "p2";
+        g.score = g.score || {p1:0, p2:0}; if (g.winner !== "draw") g.score[g.winner] = (g.score[g.winner] || 0) + 1;
+      }
+      return g;
+    }).catch(() => toast("That letter didn't send. Try again.", "lock"));
+  }
+  function wordsOnline(g, side, myTurn, otherId){
+    const other = side === "p1" ? "p2" : "p1", lives = g.lives || 7, wrong = g.wrong || 0, guessed = g.guessed || "", over = !!g.winner;
+    return el("div",{class:"words"},
+      el("div",{class:"balloons", "aria-label":`${lives - wrong} balloons left`}, Array.from({length:lives}, (_, i) => el("span",{class:`balloon ${i >= lives - wrong ? "popped" : ""}`, style:`--h:${i * 52}deg`}, img("balloon")))),
+      el("div",{class:"word", "aria-label":"The word"}, [...g.word].map(ch => el("span",{class:`slot ${guessed.includes(ch) || over ? "on" : ""}`}, guessed.includes(ch) || over ? ch : ""))),
+      el("div",{class:"small", style:"text-align:center;font-weight:900"}, `Letters this word: you ${g.pts?.[side] || 0} · ${nameOf(otherId)} ${g.pts?.[other] || 0}`),
+      over ? null : el("div",{class:"keys"}, [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].map(ch => el("button",{class:`key ${guessed.includes(ch) ? (g.word.includes(ch) ? "hit" : "miss") : ""}`,
+        disabled:!myTurn || guessed.includes(ch), onclick:() => wordsGuess(ch)}, ch))));
+  }
+
+  // ---------- Salah Quiz race (2 players): same questions; when both have answered, the right answer shows ----------
+  function newQuiz(){ return {qs:makeQuiz(10, 4), i:0, ans:null}; }
+  function quizAnswer(o){
+    const side = open.game.p1 === uid() ? "p1" : "p2";
+    runTransaction(ref(db, `games/${open.gid}`), g => {
+      if (!g) return g;
+      if (g.status !== "playing" || g.winner || g.ans?.[side] != null) return;
+      g.ans = {...(g.ans || {}), [side]:o};
+      if (g.ans.p1 != null && g.ans.p2 != null){
+        const right = g.qs[g.i].a; g.score = g.score || {p1:0, p2:0};
+        for (const s of ["p1", "p2"]) if (g.ans[s] === right) g.score[s] = (g.score[s] || 0) + 1;
+        g.revealAt = Date.now();
+      }
+      return g;
+    }).catch(() => toast("That answer didn't send. Try again.", "lock"));
+  }
+  function quizNext(i){
+    runTransaction(ref(db, `games/${open.gid}`), g => {
+      if (!g || g.winner || g.i !== i || g.ans?.p1 == null || g.ans?.p2 == null) return;
+      g.i = i + 1; g.ans = null; g.revealAt = null;
+      if (g.i >= g.qs.length){ const a = g.score?.p1 || 0, b = g.score?.p2 || 0; g.winner = a === b ? "draw" : a > b ? "p1" : "p2"; }
+      return g;
+    }).catch(() => {});
+  }
+  function quizOnline(g, side, otherId){
+    const other = side === "p1" ? "p2" : "p1", qs = g.qs || [], i = g.i || 0, q = qs[Math.min(i, qs.length - 1)];
+    if (!q) return el("div",{class:"muted"},"Loading questions…");
+    if (g.winner) return el("div",{class:"quiz-end"}, img(g.winner === side ? "trophy" : g.winner === "draw" ? "hands" : "book"),
+      el("b",{}, `You got ${g.score?.[side] || 0} of ${qs.length}. ${nameOf(otherId)} got ${g.score?.[other] || 0}.`));
+    const both = g.ans?.p1 != null && g.ans?.p2 != null, mine = g.ans?.[side];
+    if (both){ clearTimeout(open.quizT); open.quizT = setTimeout(() => quizNext(i), 2200); }   // whoever's screen is open moves on
+    return el("div",{class:"quiz"},
+      el("div",{class:"quiz-q"}, q.q),
+      el("div",{class:"quiz-opts"}, q.opts.map(o => el("button",{class:`quiz-opt ${both ? (o === q.a ? "right" : o === mine ? "wrong" : "") : o === mine ? "picked" : ""}`,
+        disabled:mine != null, onclick:() => quizAnswer(o)}, o))),
+      el("div",{class:"small muted", style:"text-align:center"}, both ? (g.ans[other] === q.a ? `${nameOf(otherId)} got it right too!` : `${nameOf(otherId)} picked: ${g.ans[other]}`)
+        : mine != null ? `Waiting for ${nameOf(otherId)} to answer…` : g.ans?.[other] != null ? `${nameOf(otherId)} has answered. Your turn!` : "Answer quickly!"));
   }
 
   // ---------- Memory Match (2 players) ----------
