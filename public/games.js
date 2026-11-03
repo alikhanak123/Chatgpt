@@ -7,6 +7,7 @@
 //   live/<gid>         = air hockey positions (puck + paddles), written many times a second
 import { getDatabase, ref, onValue, set, update, remove, push, runTransaction, onDisconnect, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { openSolo, LEVEL_NAMES, WORD_BANK, makeQuiz } from "/solo.js";
+import { KIT, kitScreen } from "/newgames.js";
 import { loadChess, chessBoard, chessStatus } from "/chesskit.js";
 
 export const GAMES = {
@@ -20,6 +21,8 @@ export const GAMES = {
   words:  {name:"Balloon Words", icon:"balloon", blurb:"Guess the word before the balloons pop!"},
   quiz:   {name:"Salah Quiz", icon:"quiz", blurb:"Race to answer questions about prayer."},
 };
+// the newer games: rules in newgames.js, played online here or vs the computer through solo.js
+for (const [k, G] of Object.entries(KIT)) GAMES[k] = {name:G.name, icon:G.icon, blurb:G.blurb, kit:true, multi:!!G.multi, buddyOnly:!!G.buddyOnly};
 const C4_COLS = 7, C4_ROWS = 6;
 const HOCKEY_WIN = 5;
 
@@ -109,6 +112,7 @@ export function initGames(ctx){
     if (pick.type === "memory"){ game.deck = newDeck(); game.opened = []; game.matched = {}; game.showing = null; }
     if (pick.type === "chess") game.fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";   // "first" plays white
     if (pick.type === "words") Object.assign(game, newWord());
+    if (GAMES[pick.type].kit) game.state = KIT[pick.type].init([me, other], {level:"medium"});
     if (pick.type === "quiz") Object.assign(game, newQuiz());
     try {
       await set(ref(db, `games/${gid}`), game);
@@ -162,6 +166,7 @@ export function initGames(ctx){
     // "With a buddy" shows only games you can play together; computer-only games appear under "Vs computer".
     const mode = friends.length ? pick.mode : "cpu";
     if (mode === "friend" && GAMES[pick.type]?.solo) pick.type = "c4";
+    if (mode === "cpu" && GAMES[pick.type]?.buddyOnly) pick.type = "c4";
     const head = el("div",{class:"sec-title"}, img("game"), el("div",{}, el("h2",{},"Games"), el("div",{class:"small muted"},"Play with your Salah Buddies or against the computer.")));
     const online = ready && !broken;
     const entries = online ? Object.entries(inbox).sort((a,b) => (b[1].ts||0) - (a[1].ts||0)) : [];
@@ -169,7 +174,7 @@ export function initGames(ctx){
     const mine = entries.filter(([,e]) => e.status !== "invite" && e.status !== "done");
 
     const gameCards = el("div",{class:"game-pick", role:"group", "aria-label":"Choose a game"},
-      Object.entries(GAMES).filter(([, g]) => mode === "cpu" || !g.solo).map(([k,g]) => el("button",{type:"button", class:"gp", "aria-pressed":String(pick.type===k), onclick:()=>{pick.type=k; ctx.rerender();}},
+      Object.entries(GAMES).filter(([, g]) => mode === "cpu" ? !g.buddyOnly : !g.solo).map(([k,g]) => el("button",{type:"button", class:"gp", "aria-pressed":String(pick.type===k), onclick:()=>{pick.type=k; ctx.rerender();}},
         img(g.icon), el("b",{}, g.name), el("span",{}, g.blurb))));
     const multi = !!GAMES[pick.type].multi;
     const seg = (items, cur, set, label) => el("div",{class:"seg", role:"group", "aria-label":label}, items.map(([k,l]) => el("button",{type:"button", "aria-pressed":String(cur===k), onclick:()=>{ set(k); ctx.rerender(); }}, l)));
@@ -178,7 +183,7 @@ export function initGames(ctx){
     let choose;
     if (mode === "cpu"){
       choose = el("div",{class:"stack", style:"gap:10px"},
-        pick.type === "snakes"
+        GAMES[pick.type].multi
           ? el("div",{}, el("div",{class:"eyebrow", style:"margin-bottom:6px"},"Computer players"), seg([[1,"1"],[2,"2"],[3,"3"]], pick.bots, v => pick.bots = v, "Number of computer players"))
           : el("div",{}, el("div",{class:"eyebrow", style:"margin-bottom:6px"},"Difficulty"), seg(Object.entries(LEVEL_NAMES), pick.level, v => pick.level = v, "Difficulty")),
         el("button",{class:"btn primary", onclick:()=>openSolo(pick.type, {level:pick.level, bots:pick.bots}, ctx)}, img("av-robot"), `Play ${GAMES[pick.type].name} vs computer`));
@@ -224,9 +229,10 @@ export function initGames(ctx){
       const g = snap.val();
       if (!g){ toast("That game was removed.", "lock"); return closeScreen(); }
       const prev = open?.game; open.game = g;
-      if (prev && prev.winner == null && g.winner && GAMES[g.type]?.multi){
+      if (prev && prev.winner == null && g.winner && g.winner !== "draw" && (GAMES[g.type]?.multi || GAMES[g.type]?.kit)){
         if (g.winner === uid()){ confetti(); toast("You win! MashaAllah!", "trophy"); } else toast(`${nameOf(g.winner)} wins this round!`, "medal2");
-      } else if (prev && prev.winner == null && g.winner){
+      } else if (prev && prev.winner == null && g.winner === "draw" && GAMES[g.type]?.kit) toast("It's a draw!", "game");
+      else if (prev && prev.winner == null && g.winner){
         const side = g.p1 === uid() ? "p1" : "p2";
         if (g.winner === side){ confetti(); toast("You win! MashaAllah!", "trophy"); }
         else if (g.winner === "draw") toast("It's a draw!", "game");
@@ -244,6 +250,7 @@ export function initGames(ctx){
 
   function renderScreen(){
     if (!open?.game) return;
+    if (GAMES[open.game.type]?.kit){ $root.replaceChildren(renderKit(open.game)); return; }
     if (GAMES[open.game.type]?.multi){ $root.replaceChildren(renderSnakes(open.game)); return; }
     const g = open.game, me = uid(), side = g.p1 === me ? "p1" : "p2", otherId = side === "p1" ? g.p2 : g.p1;
     const meP = ctx.people.get(me), them = ctx.people.get(otherId);
@@ -293,6 +300,7 @@ export function initGames(ctx){
     await runTransaction(ref(db, `games/${gid}`), g => {
       if (!g || !g.winner) return g;
       if (g.type === "snakes"){ g.pos = Object.fromEntries((g.order||[]).map(u => [u, 0])); g.turn = 0; g.winner = null; g.dice = null; g.last = null; return g; }
+      if (GAMES[g.type]?.kit){ const p = g.state.players; g.state = KIT[g.type].init([...p.slice(1), p[0]], {level:"medium"}); g.winner = null; return g; }
       if (g.type === "memory"){ g.deck = newDeck(); g.opened = []; g.matched = {}; g.showing = null; }
       if (g.type === "chess"){ g.fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; g.last = null; }
       if (g.type === "rps"){ g.score = {p1:0, p2:0}; g.picks = null; g.last = null; }
@@ -380,6 +388,38 @@ export function initGames(ctx){
         }).catch(() => toast("That move didn't send. Try again.", "lock"));
       }}),
       el("div",{class:"small muted"}, myColor === "w" ? "You are white." : "You are black."));
+  }
+
+  // ---------- newer games (rules in newgames.js) ----------
+  function renderKit(g){
+    const me = uid(), G = KIT[g.type];
+    if (G.multi && g.status === "invited") return renderSnakesLobby(g);
+    open.local ||= {redraw:() => renderScreen(), toast:t => toast(t, "lock")};
+    const otherId = g.p1 === me ? g.p2 : g.p1;
+    const waiting = g.status === "declined" ? `${nameOf(otherId)} said no this time.` : g.status === "invited" ? `Waiting for ${nameOf(otherId)} to say yes…` : !g.state ? "Getting the game ready…" : null;
+    return kitScreen(ctx, {G, state:g.state, me, winner:g.winner || null, waiting, local:open.local,
+      nameOf:u => u === me ? "You" : nameOf(u), avatarOf:u => ctx.people.get(u) || (u === me ? ctx.me() : null),
+      send:a => kitMove(a), onBack:closeScreen, onAgain:rematch});
+  }
+  function kitMove(a){
+    const me = uid();
+    runTransaction(ref(db, `games/${open.gid}`), g => {
+      if (!g) return g;
+      if (g.status !== "playing" || g.winner || !g.state) return;
+      const ns = KIT[g.type].move(g.state, me, a); if (!ns) return;
+      g.state = ns; const w = KIT[g.type].winner(ns); if (w) g.winner = w;
+      return g;
+    }).catch(() => toast("That move didn't send. Try again.", "lock"));
+  }
+  // waiting room for 2-4 player games (same as Snakes & Ladders)
+  function renderSnakesLobby(g){
+    const me = uid(), host = g.p1 === me, others = Object.keys(g.pl || {}), joinedCount = Object.values(g.pl || {}).filter(v => v?.ok).length;
+    return el("div",{class:"game-screen", role:"dialog", "aria-label":GAMES[g.type].name},
+      el("div",{class:"gs-top"}, el("button",{class:"btn ghost sm", onclick:closeScreen},"← Back"), el("div",{class:"gs-title"}, img(GAMES[g.type].icon), GAMES[g.type].name), el("span",{style:"width:70px"})),
+      el("div",{class:"sl-players"}, [g.p1, ...others].map(u => el("div",{class:"gs-player"}, avatar(ctx.people.get(u) || (u === me ? ctx.me() : null), 48),
+        el("div",{style:"min-width:0"}, el("b",{}, u === me ? "You" : nameOf(u)), el("div",{class:"small muted"}, u === g.p1 || g.pl?.[u]?.ok ? "Ready ✓" : "Invited…"))))),
+      el("div",{class:"gs-status"}, g.status === "declined" ? "This game was cancelled." : host ? "Wait for friends to join, then start!" : "Waiting for the host to start…"),
+      host ? el("button",{class:"btn primary", disabled:!joinedCount, onclick:snakesStart}, joinedCount ? `Start with ${joinedCount + 1} players` : "Waiting for someone to join…") : null);
   }
 
   // ---------- Rock Paper Scissors (2 players): both pick, then both are shown. First to 3 wins. ----------
@@ -551,7 +591,8 @@ export function initGames(ctx){
       if (!g || g.status !== "invited") return;
       const joined = Object.entries(g.pl||{}).filter(([,v]) => v?.ok).map(([u]) => u);
       if (!joined.length) return;
-      g.order = [g.p1, ...joined]; g.pos = Object.fromEntries(g.order.map(u => [u, 0])); g.turn = 0; g.status = "playing"; g.winner = null; g.dice = null; g.last = null;
+      g.order = [g.p1, ...joined].slice(0, 4); g.pos = Object.fromEntries(g.order.map(u => [u, 0])); g.turn = 0; g.status = "playing"; g.winner = null; g.dice = null; g.last = null;
+      if (GAMES[g.type]?.kit) g.state = KIT[g.type].init(g.order);
       return g;
     });
     const g = open.game, upd = {[`inbox/${uid()}/${open.gid}/status`]:"playing"};

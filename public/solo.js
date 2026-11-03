@@ -1,6 +1,7 @@
 // Salah Tracker — play any game against the computer (no internet play needed). Levels: easy, medium, hard.
 import { loadChess, aiMove, chessBoard, chessStatus } from "/chesskit.js";
 import { renderSLBoard, slMove } from "/games.js";
+import { KIT, openKit } from "/newgames.js";
 
 export const LEVEL_NAMES = {easy:"Easy", medium:"Medium", hard:"Hard"};
 // Words for Balloon Words (with a hint each) and questions for the Salah Quiz: used vs the computer and with buddies.
@@ -49,6 +50,7 @@ const COLORS = ["#FF5C8A", "#3E9BFF", "#17A35F", "#FFC23C"];
 const C4C = 7, C4R = 6;
 
 export function openSolo(type, {level = "medium", bots = 1} = {}, ctx){
+  if (KIT[type]) return openKit(type, {level, bots}, ctx);   // the newer games
   const {el, img, avatar, toast, confetti} = ctx;
   const root = document.getElementById("game-root");
   const me = ctx.me(), cpu = {avatar:"av-robot", name:"Computer"};
