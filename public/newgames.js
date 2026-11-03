@@ -3,6 +3,7 @@
 // online with buddies (games.js keeps the state in the Realtime Database and applies moves in a transaction)
 // and offline against the computer (openKit below).
 // State must be safe for the Realtime Database: no empty arrays or objects (they disappear), so boards are strings.
+import { WS_THEMES } from "/knowledge.js";
 const COLORS = ["#E8466C", "#2E8BEA", "#F5A524", "#0A8A7C"];
 const rint = n => Math.random() * n | 0;
 const shuffle = a => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(v => v[1]);
@@ -125,16 +126,10 @@ const ships = {
 // ======================= Word Search race =======================
 // 8×8 letters hiding 6 words. Tap the first letter, then the last. Find more words than the others!
 const WN = 8;
-const WS_SETS = [
-  ["PRAYER", "MOSQUE", "QURAN", "FAJR", "ISHA", "WUDU", "ASR", "DUA"],
-  ["CAMEL", "FALCON", "DATES", "DESERT", "OASIS", "PALM", "SAND", "MOON"],
-  ["APPLE", "MANGO", "GRAPE", "LEMON", "PEACH", "MELON", "KIWI", "FIG"],
-  ["LION", "TIGER", "ZEBRA", "PANDA", "HORSE", "SHEEP", "GOAT", "OWL"],
-  ["KIND", "HONEST", "HELP", "SMILE", "SHARE", "THANKS", "PEACE", "CARE"],
-];
+const WS_SETS = WS_THEMES;   // [theme name, words], in knowledge.js
 function makeSearch(level){
   for (let tries = 0; tries < 50; tries++){
-    const words = shuffle(WS_SETS[rint(WS_SETS.length)]).slice(0, 6), dirs = level === "hard" ? [[0,1],[1,0],[1,1],[-1,1]] : [[0,1],[1,0]];
+    const [theme, list] = WS_SETS[rint(WS_SETS.length)], words = shuffle(list).slice(0, 6), dirs = level === "hard" ? [[0,1],[1,0],[1,1],[-1,1]] : [[0,1],[1,0]];
     let g = Array(WN * WN).fill(""), placed = [];
     for (const w of words){
       let ok = false;
@@ -148,7 +143,7 @@ function makeSearch(level){
     }
     if (placed.length < 6) continue;
     const ABC = "ABCDEFGHIJKLMNOPRSTUWY";
-    return {grid:g.map(ch => ch || ABC[rint(ABC.length)]).join(""), words:placed};
+    return {theme, grid:g.map(ch => ch || ABC[rint(ABC.length)]).join(""), words:placed};
   }
 }
 const wordCells = (a, b) => { const r1 = a / WN | 0, c1 = a % WN, r2 = b / WN | 0, c2 = b % WN, dr = Math.sign(r2 - r1), dc = Math.sign(c2 - c1), n = Math.max(Math.abs(r2 - r1), Math.abs(c2 - c1));
@@ -156,7 +151,7 @@ const wordCells = (a, b) => { const r1 = a / WN | 0, c1 = a % WN, r2 = b / WN | 
   return Array.from({length:n + 1}, (_, i) => (r1 + dr * i) * WN + c1 + dc * i); };
 const wsearch = {
   name:"Word Search", icon:"abc", blurb:"Race to find the hidden words!", min:2, max:2, simultaneous:true,
-  init:(p, opts = {}) => { const m = makeSearch(opts.level || "medium"); return {players:p, grid:m.grid, words:m.words, found:".".repeat(m.words.length)}; },
+  init:(p, opts = {}) => { const m = makeSearch(opts.level || "medium"); return {players:p, theme:m.theme, grid:m.grid, words:m.words, found:".".repeat(m.words.length)}; },
   turn:() => null,
   move(s, pid, a){
     const k = s.words.findIndex((w, i) => s.found[i] === "." && ((w.a === a.a && w.b === a.b) || (w.a === a.b && w.b === a.a)));
@@ -178,6 +173,7 @@ const wsearch = {
         local.redraw();
       }}, ch)));
     return el("div",{class:"kit-board"},
+      s.theme ? el("div",{class:"eyebrow", style:"text-align:center"}, `Theme: ${s.theme}`) : null,
       el("div",{class:"small muted", style:"text-align:center"}, local.sel == null ? "Tap the first letter of a word, then the last letter." : "Now tap the last letter."),
       grid,
       el("div",{class:"ws-words"}, s.words.map((w, k) => el("span",{class:`ws-word ${s.found[k] !== "." ? "got" : ""}`, style:s.found[k] !== "." ? `border-color:${COLORS[+s.found[k]]}` : ""},
@@ -189,7 +185,10 @@ const wsearch = {
 // Take turns: the drawer picks a word and draws it; the other player picks the right word from 6 choices (2 tries).
 // Right guess: guesser +2, drawer +1. 6 rounds.
 const DRAW_WORDS = ["CAT", "SUN", "HOUSE", "TREE", "FISH", "MOON", "STAR", "CAR", "BALL", "APPLE", "CAMEL", "BOOK", "FLOWER", "CAKE", "BOAT", "KITE",
-  "BIRD", "CLOCK", "UMBRELLA", "CUP", "DUCK", "RAINBOW", "SNAKE", "HEART", "PLANE", "TRAIN", "BANANA", "HAT", "SHOE", "PIZZA", "SPIDER", "MOSQUE"];
+  "BIRD", "CLOCK", "UMBRELLA", "CUP", "DUCK", "RAINBOW", "SNAKE", "HEART", "PLANE", "TRAIN", "BANANA", "HAT", "SHOE", "PIZZA", "SPIDER", "MOSQUE",
+  "ROCKET", "PLANET", "VOLCANO", "MAGNET", "ROBOT", "CASTLE", "BRIDGE", "BICYCLE", "GUITAR", "PENCIL", "GLASSES", "LADDER", "SNOWMAN", "CLOUD",
+  "LIGHTNING", "MOUNTAIN", "ISLAND", "WHALE", "OCTOPUS", "GIRAFFE", "ELEPHANT", "TURTLE", "BUTTERFLY", "CARROT", "ICE CREAM", "TEETH", "EYE",
+  "KEY", "DOOR", "TABLE", "LAMP", "COMPUTER", "PHONE", "CAMERA", "DRUM", "TENT", "BUS", "SHIP", "TRIANGLE", "SQUARE", "CIRCLE", "THERMOMETER"];
 const DROUNDS = 6, PEN = ["#22204A", "#E8466C", "#2E8BEA", "#0A8A7C", "#F5A524"];
 const newRound = s => ({...s, phase:"pick", pickFrom:shuffle(DRAW_WORDS).slice(0, 3).join(","), word:"", opts:"", strokes:null, tries:2, result:""});
 const draw = {

@@ -4,53 +4,14 @@ import { renderSLBoard, slMove } from "/games.js";
 import { KIT, openKit } from "/newgames.js";
 
 export const LEVEL_NAMES = {easy:"Easy", medium:"Medium", hard:"Hard"};
-// Words for Balloon Words (with a hint each) and questions for the Salah Quiz: used vs the computer and with buddies.
-export const WORD_BANK = {
-  easy:[["SUN","It shines in the day"],["MOON","It shines at night"],["STAR","Twinkle, twinkle…"],["CAT","A pet that purrs"],["FISH","It swims in the sea"],["DATE","A sweet fruit from palm trees"],
-    ["BOOK","You read it"],["PRAY","What we do five times a day"],["RAIN","Water falling from clouds"],["CAKE","A birthday treat"],["DUCK","It says quack"],["BIRD","It flies and sings"]],
-  medium:[["MOSQUE","Where we pray together"],["QURAN","The holy book"],["KAABA","We face it when we pray"],["CAMEL","The ship of the desert"],["FAJR","The dawn prayer"],["WUDU","Washing before prayer"],
-    ["OMAN","A country of mountains and sea"],["ZAKAT","Giving to people in need"],["MAKKAH","The city of the Kaaba"],["FALCON","A fast bird of prey"],["DESERT","Sand everywhere!"],["PRAYER","Salah in English"]],
-  hard:[["RAMADAN","The month of fasting"],["MAGHRIB","The sunset prayer"],["TAHAJJUD","A prayer in the night"],["MUSCAT","The capital of Oman"],["SUJOOD","Forehead on the ground"],["ISHRAQ","A prayer after sunrise"],
-    ["MADINAH","The city of the Prophet ﷺ"],["MINARET","The tall tower of a mosque"],["CRESCENT","A thin moon shape"],["GRATEFUL","Saying Alhamdulillah"],["PATIENCE","Sabr"],["KINDNESS","Being nice to everyone"]],
-    };
-export const QUIZ_BANK = [   // question, right answer, then wrong answers
-  ["How many prayers do we pray every day?", "5", "3", "7", "4"],
-  ["Which prayer is at dawn, before sunrise?", "Fajr", "Isha", "Asr", "Maghrib"],
-  ["Which prayer is at midday?", "Dhuhr", "Fajr", "Maghrib", "Isha"],
-  ["Which prayer is in the afternoon?", "Asr", "Fajr", "Isha", "Dhuhr"],
-  ["Which prayer is just after sunset?", "Maghrib", "Asr", "Fajr", "Dhuhr"],
-  ["Which prayer is at night?", "Isha", "Fajr", "Dhuhr", "Asr"],
-  ["How many Fard rakats are in Fajr?", "2", "3", "4", "1"],
-  ["How many Fard rakats are in Dhuhr?", "4", "2", "3", "5"],
-  ["How many Fard rakats are in Asr?", "4", "2", "3", "5"],
-  ["How many Fard rakats are in Maghrib?", "3", "2", "4", "5"],
-  ["How many Fard rakats are in Isha?", "4", "3", "2", "6"],
-  ["What do we do before praying, to be clean?", "Wudu", "Sujood", "Ruku", "Zakat"],
-  ["Which way do we face when we pray?", "Towards the Kaaba", "Towards the sun", "Any way we like", "Towards the sea"],
-  ["Which surah do we recite in every rakat?", "Al-Fatiha", "Al-Ikhlas", "An-Nas", "Al-Kawthar"],
-  ["What do we say to start the prayer?", "Allahu Akbar", "Alhamdulillah", "SubhanAllah", "Ameen"],
-  ["What is it called when we bow with our hands on our knees?", "Ruku", "Sujood", "Qiyam", "Tashahhud"],
-  ["What is it called when our forehead touches the ground?", "Sujood", "Ruku", "Qiyam", "Wudu"],
-  ["How do we finish the prayer?", "Saying salam to the right and left", "Clapping our hands", "Standing up quickly", "Saying Bismillah"],
-  ["Which prayer is followed by Witr?", "Isha", "Fajr", "Dhuhr", "Maghrib"],
-  ["How many rakats is Witr?", "3", "1", "2", "4"],
-  ["What is the special Friday prayer called?", "Jumu'ah", "Eid", "Tahajjud", "Ishraq"],
-  ["In which month do Muslims fast?", "Ramadan", "Rajab", "Shawwal", "Muharram"],
-  ["In which city is the Kaaba?", "Makkah", "Madinah", "Muscat", "Cairo"],
-  ["What is the call to prayer called?", "Adhan", "Dua", "Dhikr", "Khutbah"],
-  ["Which bonus prayer is prayed in the night?", "Tahajjud", "Ishraq", "Maghrib", "Jumu'ah"],
-  ["Which bonus prayer is prayed after sunrise?", "Ishraq", "Tahajjud", "Isha", "Witr"],
-  ["What do we say after sneezing?", "Alhamdulillah", "Ameen", "SubhanAllah", "Allahu Akbar"],
-  ["What do we say before eating?", "Bismillah", "Alhamdulillah", "Ameen", "Allahu Akbar"],
-    ];   // question, right answer, then wrong answers
-const shuffleList = a => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(v => v[1]);
-// n questions, each with the right answer and (opts - 1) wrong ones, all shuffled
-export const makeQuiz = (n, opts) => shuffleList(QUIZ_BANK).slice(0, n).map(([q, a, ...w]) => ({q, a, opts:shuffleList([a, ...shuffleList(w).slice(0, opts - 1)])}));
+// Words and quiz questions on many topics live in knowledge.js
+import { WORD_BANK, QUIZ_BANK, makeQuiz, pickWord } from "/knowledge.js";
+export { WORD_BANK, QUIZ_BANK, makeQuiz };
 const COLORS = ["#FF5C8A", "#3E9BFF", "#17A35F", "#FFC23C"];
 const C4C = 7, C4R = 6;
 
-export function openSolo(type, {level = "medium", bots = 1} = {}, ctx){
-  if (KIT[type]) return openKit(type, {level, bots}, ctx);   // the newer games
+export function openSolo(type, {level = "medium", bots = 1, topic = "mixed"} = {}, ctx){
+  if (KIT[type]) return openKit(type, {level, bots, topic}, ctx);   // the newer games
   const {el, img, avatar, toast, confetti} = ctx;
   const root = document.getElementById("game-root");
   const me = ctx.me(), cpu = {avatar:"av-robot", name:"Computer"};
@@ -59,7 +20,7 @@ export function openSolo(type, {level = "medium", bots = 1} = {}, ctx){
   const close = () => { closed = true; stopFns.forEach(f => f()); stopFns = []; root.replaceChildren(); document.body.classList.remove("gaming"); };
   document.body.classList.add("gaming");
   const TITLE = {ttt:["Tic-Tac-Toe","xmark"], c4:["Four in a Row","disc-red"], memory:["Memory Match","cards"], snakes:["Snakes & Ladders","snake"], hockey:["Air Hockey","hockey"], chess:["Chess","chess"],
-    rps:["Rock Paper Scissors","g-scissors"], words:["Balloon Words","balloon"], quiz:["Salah Quiz","quiz"]}[type];
+    rps:["Rock Paper Scissors","g-scissors"], words:["Balloon Words","balloon"], quiz:["Quiz Time","quiz"]}[type];
   const score = {me:0, cpu:0};
   const pcard = (p, label, sc, active) => el("div",{class:`gs-player ${active ? "active" : ""}`}, avatar(p, 48), el("div",{}, el("b",{}, label), el("div",{class:"gs-score num"}, sc)));
   function frame(status, board, {done = false, again, players, go = false} = {}){
@@ -104,10 +65,10 @@ export function openSolo(type, {level = "medium", bots = 1} = {}, ctx){
 
   // ---------- Balloon Words: guess the word before the balloons pop ----------
   if (type === "words"){
-    const WORDS = WORD_BANK;
+    const used = new Set();
     const LIVES = {easy:8, medium:7, hard:6}[level] || 7;
-    let word, hint, guessed, wrong, pool = [];
-    const start = () => { if (!pool.length) pool = [...WORDS[level] || WORDS.medium].sort(() => Math.random() - .5); [word, hint] = pool.pop(); guessed = new Set(); wrong = 0; draw(); };
+    let word, hint, guessed, wrong;
+    const start = () => { [word, hint] = pickWord(topic, level, used); guessed = new Set(); wrong = 0; draw(); };
     const won = () => [...word].every(ch => guessed.has(ch));
     function guess(ch){
       if (guessed.has(ch) || won() || wrong >= LIVES) return;
@@ -130,13 +91,11 @@ export function openSolo(type, {level = "medium", bots = 1} = {}, ctx){
     return start();
   }
 
-  // ---------- Salah Quiz ----------
+  // ---------- Quiz Time (topic chosen before playing) ----------
   if (type === "quiz"){
-    const Q = QUIZ_BANK;
     const N = {easy:8, medium:10, hard:12}[level] || 10, OPTS = level === "easy" ? 3 : 4, TIME = level === "hard" ? 12 : 0;
-    const shuffle = a => a.map(v => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map(v => v[1]);
     let qs, i, right, picked;
-    const start = () => { qs = shuffle(Q).slice(0, N).map(([q, a, ...w]) => ({q, a, opts:shuffle([a, ...shuffle(w).slice(0, OPTS - 1)])})); i = 0; right = 0; picked = null; draw(); };
+    const start = () => { qs = makeQuiz(N, OPTS, topic, level); i = 0; right = 0; picked = null; draw(); };
     function pick(o){
       if (picked !== null) return; picked = o; const ok = o === qs[i].a; if (ok) right++;
       draw(); later(() => { i++; picked = null; draw(); }, ok ? 900 : 1900);

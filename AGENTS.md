@@ -63,6 +63,7 @@ The **admin page** is at `/admin`: it shows all kids and activity and holds the 
 | `public/cert.js` | Badge certificates (canvas → PDF via jsPDF from cdnjs, picture, print). |
 | `public/newgames.js` | Dots and Boxes, Find the Ships, Word Search, Draw and Guess, Quick Ludo: each written once as rules, played online (games.js) or vs computer (openKit). |
 | `public/verse.js`, `stories.js`, `surah.js` | Verse of the day, weekly Prophet story + quiz, learn a surah line by line. Quran text/audio always fetched from alquran.cloud, never typed by hand. |
+| `public/knowledge.js` | Learning content for the games: Balloon Words words and Quiz Time questions by topic (science, space, world, animals, English, general, salah), a maths question maker, and Word Search themes. Add more by adding lines. |
 | `public/shop.js` | Pet shop: stars = pet food earned − spent; hats, toys, garden items drawn in pet3d.js. |
 | `android/` | Sideload Android app (WebView of the live site) with downloads, printing, sharing, Back button and prayer-time notifications. Build: `sh android/build.sh`. |
 | `public/models/*.glb` | 3D animal models. Licences are in `public/models/CREDITS.txt`; keep the credit line shown under the pet. |

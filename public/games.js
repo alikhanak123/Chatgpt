@@ -6,7 +6,8 @@
 //                        Snakes & Ladders: p1 = host, pl:{<uid>:{ok}} invited players, order:[uids], pos:{uid:square}, turn = index
 //   live/<gid>         = air hockey positions (puck + paddles), written many times a second
 import { getDatabase, ref, onValue, set, update, remove, push, runTransaction, onDisconnect, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { openSolo, LEVEL_NAMES, WORD_BANK, makeQuiz } from "/solo.js";
+import { openSolo, LEVEL_NAMES, makeQuiz } from "/solo.js";
+import { TOPICS, WORD_TOPICS, pickWord } from "/knowledge.js";
 import { KIT, kitScreen } from "/newgames.js";
 import { loadChess, chessBoard, chessStatus } from "/chesskit.js";
 
@@ -19,7 +20,7 @@ export const GAMES = {
   hockey: {name:"Air Hockey", icon:"hockey",   blurb:"Live! Slide your paddle and score goals."},
   rps:    {name:"Rock Paper Scissors", icon:"g-scissors", blurb:"Pick at the same time. First to 3 wins!"},
   words:  {name:"Balloon Words", icon:"balloon", blurb:"Guess the word before the balloons pop!"},
-  quiz:   {name:"Salah Quiz", icon:"quiz", blurb:"Race to answer questions about prayer."},
+  quiz:   {name:"Quiz Time", icon:"quiz", blurb:"Science, space, maths, the world and more!"},
 };
 // the newer games: rules in newgames.js, played online here or vs the computer through solo.js
 for (const [k, G] of Object.entries(KIT)) GAMES[k] = {name:G.name, icon:G.icon, blurb:G.blurb, kit:true, multi:!!G.multi, buddyOnly:!!G.buddyOnly};
@@ -77,7 +78,7 @@ export function initGames(ctx){
 
   let inbox = {};                 // gid -> entry
   let inboxOff = null, seenInvites = new Set();
-  let pick = {type:"c4", friend:null, many:new Set(), mode:"friend", level:"medium", bots:1};
+  let pick = {type:"c4", friend:null, many:new Set(), mode:"friend", level:"medium", bots:1, topic:"mixed"};
   let Chess = null; loadChess().then(C => { Chess = C; if (open?.game?.type === "chess") renderScreen(); }).catch(()=>{});
   let open = null;                // currently open game screen state
 
@@ -111,9 +112,9 @@ export function initGames(ctx){
                   board: pick.type === "c4" ? ".".repeat(C4_COLS*C4_ROWS) : pick.type === "ttt" ? ".".repeat(9) : ""};
     if (pick.type === "memory"){ game.deck = newDeck(); game.opened = []; game.matched = {}; game.showing = null; }
     if (pick.type === "chess") game.fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";   // "first" plays white
-    if (pick.type === "words") Object.assign(game, newWord());
+    if (pick.type === "words") Object.assign(game, newWord(pick.topic));
     if (GAMES[pick.type].kit) game.state = KIT[pick.type].init([me, other], {level:"medium"});
-    if (pick.type === "quiz") Object.assign(game, newQuiz());
+    if (pick.type === "quiz") Object.assign(game, newQuiz(pick.topic));
     try {
       await set(ref(db, `games/${gid}`), game);
       await update(ref(db), {[`inbox/${me}/${gid}`]:{type:pick.type, other, status:"sent", ts}, [`inbox/${other}/${gid}`]:{type:pick.type, other:me, status:"invite", ts}});
@@ -178,6 +179,10 @@ export function initGames(ctx){
         img(g.icon), el("b",{}, g.name), el("span",{}, g.blurb))));
     const multi = !!GAMES[pick.type].multi;
     const seg = (items, cur, set, label) => el("div",{class:"seg", role:"group", "aria-label":label}, items.map(([k,l]) => el("button",{type:"button", "aria-pressed":String(cur===k), onclick:()=>{ set(k); ctx.rerender(); }}, l)));
+    const topics = pick.type === "quiz" ? TOPICS : pick.type === "words" ? WORD_TOPICS : null;
+    if (topics && !topics.some(([k]) => k === pick.topic)) pick.topic = "mixed";
+    const topicPick = topics ? el("div",{}, el("div",{class:"eyebrow", style:"margin-bottom:6px"},"Topic"),
+      el("div",{class:"topic-pick", role:"group", "aria-label":"Choose a topic"}, topics.map(([k, name, icon]) => el("button",{type:"button", class:"tp", "aria-pressed":String(pick.topic === k), onclick:()=>{ pick.topic = k; ctx.rerender(); }}, img(icon), name)))) : null;
     const modeSeg = seg([["friend","With a buddy"],["cpu","Vs computer"]], pick.mode, v => pick.mode = v, "Who to play with");
 
     let choose;
@@ -186,7 +191,8 @@ export function initGames(ctx){
         GAMES[pick.type].multi
           ? el("div",{}, el("div",{class:"eyebrow", style:"margin-bottom:6px"},"Computer players"), seg([[1,"1"],[2,"2"],[3,"3"]], pick.bots, v => pick.bots = v, "Number of computer players"))
           : el("div",{}, el("div",{class:"eyebrow", style:"margin-bottom:6px"},"Difficulty"), seg(Object.entries(LEVEL_NAMES), pick.level, v => pick.level = v, "Difficulty")),
-        el("button",{class:"btn primary", onclick:()=>openSolo(pick.type, {level:pick.level, bots:pick.bots}, ctx)}, img("av-robot"), `Play ${GAMES[pick.type].name} vs computer`));
+        topicPick,
+        el("button",{class:"btn primary", onclick:()=>openSolo(pick.type, {level:pick.level, bots:pick.bots, topic:pick.topic}, ctx)}, img("av-robot"), `Play ${GAMES[pick.type].name} vs computer`));
     } else {
       for (const f of [...pick.many]) if (!friends.includes(f)) pick.many.delete(f);
       if (multi && !pick.many.size && friends[0]) pick.many.add(friends[0]);
@@ -198,7 +204,7 @@ export function initGames(ctx){
           avatar(ctx.people.get(f), 48), nameOf(f))));
       const inviteLabel = multi ? (pick.many.size ? `Invite ${[...pick.many].map(nameOf).join(" + ")}` : "Pick friends to invite") : `Invite ${pick.friend ? nameOf(pick.friend) : "a friend"} to play`;
       choose = !online ? el("div",{class:"note"},"Playing with buddies needs one more setup step by a grown-up. You can play vs the computer now!")
-        : el("div",{class:"stack", style:"gap:10px"}, el("div",{class:"eyebrow"}, multi ? "Play with (pick up to 3)" : "Play with"), friendPick,
+        : el("div",{class:"stack", style:"gap:10px"}, topicPick, el("div",{class:"eyebrow"}, multi ? "Play with (pick up to 3)" : "Play with"), friendPick,
             el("button",{class:"btn primary", onclick:sendInvite}, img("game"), inviteLabel));
     }
 
@@ -304,8 +310,8 @@ export function initGames(ctx){
       if (g.type === "memory"){ g.deck = newDeck(); g.opened = []; g.matched = {}; g.showing = null; }
       if (g.type === "chess"){ g.fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; g.last = null; }
       if (g.type === "rps"){ g.score = {p1:0, p2:0}; g.picks = null; g.last = null; }
-      if (g.type === "words") Object.assign(g, newWord());
-      if (g.type === "quiz"){ Object.assign(g, newQuiz()); g.score = {p1:0, p2:0}; }
+      if (g.type === "words") Object.assign(g, newWord(g.topic));
+      if (g.type === "quiz"){ Object.assign(g, newQuiz(g.topic)); g.score = {p1:0, p2:0}; }
       const first = g.first === "p1" ? "p2" : "p1";
       g.first = first; g.turn = first; g.winner = null; g.round = (g.round||1) + 1;
       g.board = g.type === "c4" ? ".".repeat(C4_COLS*C4_ROWS) : g.type === "ttt" ? ".".repeat(9) : "";
@@ -454,9 +460,9 @@ export function initGames(ctx){
   // ---------- Balloon Words (2 players): one word, take turns guessing letters ----------
   // Right letter = a point for each time it appears, and you go again. Wrong letter = a balloon pops and it's their turn.
   // When the word is found (or all balloons pop) the player with more letters wins the round.
-  function newWord(){
-    const all = [...WORD_BANK.easy, ...WORD_BANK.medium, ...WORD_BANK.hard], [word, hint] = all[Math.random() * all.length | 0];
-    return {word, hint, guessed:"", wrong:0, lives:7, pts:{p1:0, p2:0}};
+  function newWord(topic = "mixed"){
+    const [word, hint] = pickWord(topic, ["easy", "medium", "hard"][Math.random() * 3 | 0]);
+    return {word, hint, topic, guessed:"", wrong:0, lives:7, pts:{p1:0, p2:0}};
   }
   function wordsGuess(ch){
     const side = open.game.p1 === uid() ? "p1" : "p2";
@@ -486,8 +492,8 @@ export function initGames(ctx){
         disabled:!myTurn || guessed.includes(ch), onclick:() => wordsGuess(ch)}, ch))));
   }
 
-  // ---------- Salah Quiz race (2 players): same questions; when both have answered, the right answer shows ----------
-  function newQuiz(){ return {qs:makeQuiz(10, 4), i:0, ans:null}; }
+  // ---------- Quiz Time race (2 players): same questions; when both have answered, the right answer shows ----------
+  function newQuiz(topic = "mixed"){ return {qs:makeQuiz(10, 4, topic), topic, i:0, ans:null}; }
   function quizAnswer(o){
     const side = open.game.p1 === uid() ? "p1" : "p2";
     runTransaction(ref(db, `games/${open.gid}`), g => {
