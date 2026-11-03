@@ -5,6 +5,12 @@ package com.salahtracker.app;
 // a browser page can't do on its own: saving certificates, printing, sharing, WhatsApp links and the Back button.
 
 import android.app.Activity;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import android.content.ActivityNotFoundException;
 import android.content.ContentValues;
 import android.content.Context;
@@ -128,6 +134,13 @@ public class MainActivity extends Activity {
     @Override protected void onPause() { super.onPause(); web.onPause(); CookieManager.getInstance().flush(); }
     @Override protected void onResume() { super.onResume(); web.onResume(); }
 
+    PendingIntent reminder(int i, String title, String text) {
+        Intent it = new Intent(this, ReminderReceiver.class);
+        it.putExtra("id", 100 + i);
+        if (title != null) { it.putExtra("title", title); it.putExtra("text", text); }
+        return PendingIntent.getBroadcast(this, 100 + i, it, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
     void toast(final String msg) {
         runOnUiThread(new Runnable() { @Override public void run() { Toast.makeText(MainActivity.this, msg, Toast.LENGTH_LONG).show(); } });
     }
@@ -189,7 +202,45 @@ public class MainActivity extends Activity {
         }
 
         @JavascriptInterface
-        public String version() { return "1.0"; }
+        public String version() { return "1.1"; }
+
+        // Prayer reminders. json = [{t: time in ms, title, text}, …]. An empty list switches them off.
+        @JavascriptInterface
+        public String setReminders(String json) {
+            try {
+                AlarmManager am = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+                SharedPreferences sp = getSharedPreferences("reminders", MODE_PRIVATE);
+                for (int i = 0, n = sp.getInt("n", 0); i < n; i++) am.cancel(reminder(i, null, null));
+                JSONArray list = new JSONArray(json);
+                int count = 0;
+                long now = System.currentTimeMillis();
+                for (int i = 0; i < list.length() && count < 20; i++) {
+                    JSONObject r = list.getJSONObject(i);
+                    long t = r.getLong("t");
+                    if (t <= now) continue;
+                    am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, t, reminder(count, r.optString("title"), r.optString("text")));
+                    count++;
+                }
+                sp.edit().putInt("n", count).apply();
+                ReminderReceiver.ensureChannel(MainActivity.this);
+                return canNotify() ? "ok" : "need-permission";
+            } catch (Exception e) {
+                return "error";
+            }
+        }
+
+        @JavascriptInterface
+        public boolean canNotify() {
+            if (Build.VERSION.SDK_INT < 33) return true;
+            return checkSelfPermission("android.permission.POST_NOTIFICATIONS") == PackageManager.PERMISSION_GRANTED;
+        }
+
+        @JavascriptInterface
+        public void askNotify() {
+            if (Build.VERSION.SDK_INT >= 33) runOnUiThread(new Runnable() { @Override public void run() {
+                requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 7);
+            }});
+        }
     }
 
     static final String OFFLINE = "<html><body style=\"font-family:sans-serif;background:#F3F6FC;color:#22204A;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center\">"

@@ -102,6 +102,33 @@ function crownMesh(){
   c.add(at(ball(.035, "#FF5C8A"), 0, .02, .19));
   return c;
 }
+// Pet shop things (shop.js): a hat on the head, a toy beside the pet, something in the garden.
+function itemMesh(id){
+  const g = new THREE.Group();
+  const m = (geo, color, x = 0, y = 0, z = 0, extra) => { const o = new THREE.Mesh(geo, toon(color, extra)); o.position.set(x, y, z); o.castShadow = true; g.add(o); return o; };
+  const Cyl = (a, b, h, s = 24) => new THREE.CylinderGeometry(a, b, h, s), Sph = (r, s = 20) => new THREE.SphereGeometry(r, s, Math.max(10, s / 2 | 0));
+  if (id === "tophat"){ m(Cyl(.24, .24, .03), "#26262E"); m(Cyl(.15, .16, .26), "#26262E", 0, .14, 0); m(Cyl(.163, .163, .055), "#E8466C", 0, .05, 0); }
+  else if (id === "cap"){ m(new THREE.SphereGeometry(.17, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), "#2E8BEA");
+    const v = m(new THREE.CylinderGeometry(.16, .16, .02, 24, 1, false, 0, Math.PI), "#1E6FC4", 0, .01, .05); v.rotation.y = Math.PI / 2; m(Sph(.025), "#FFFFFF", 0, .17, 0); }
+  else if (id === "gradcap"){ const b = m(new THREE.BoxGeometry(.36, .03, .36), "#22204A", 0, .13, 0); b.rotation.y = Math.PI / 4; m(Cyl(.12, .13, .12), "#22204A", 0, .06, 0);
+    m(Cyl(.006, .006, .14, 6), "#F5A524", .2, .07, 0); m(Sph(.025, 10), "#F5A524", .2, 0, 0); }
+  else if (id === "flowers"){ for (let k = 0; k < 8; k++){ const a = k / 8 * Math.PI * 2; m(Sph(.05, 12), ["#FF6FA0", "#FFD166", "#A994FF", "#FF8A5C"][k % 4], Math.cos(a) * .15, .02, Math.sin(a) * .15); }
+    for (let k = 0; k < 8; k++){ const a = (k + .5) / 8 * Math.PI * 2; m(Sph(.03, 8), "#4FAE5C", Math.cos(a) * .15, 0, Math.sin(a) * .15); } }
+  else if (id === "ball"){ m(Sph(.12, 24), "#FFFFFF", 0, .12, 0); for (const [x, y, z] of [[0, .24, 0], [.11, .15, .04], [-.07, .14, .09], [.02, .1, -.115], [-.1, .2, -.04]]) m(Sph(.035, 10), "#22222A", x, y, z); }
+  else if (id === "teddy"){ const B = "#B07A45"; m(Sph(.13), B, 0, .13, 0).scale.set(1, 1.1, .9); m(Sph(.1), B, 0, .32, 0); m(Sph(.04, 10), B, -.07, .41, 0); m(Sph(.04, 10), B, .07, .41, 0);
+    m(Sph(.045, 12), "#E8C9A0", 0, .3, .08); m(Sph(.015, 8), "#22222A", -.035, .35, .085); m(Sph(.015, 8), "#22222A", .035, .35, .085);
+    for (const s of [-1, 1]){ m(Sph(.05, 10), B, s * .12, .17, .05); m(Sph(.055, 10), B, s * .07, .03, .07); } }
+  else if (id === "balloons"){ [["#E8466C", -.12, 1.25], ["#F5A524", .1, 1.4], ["#2E8BEA", .02, 1.15]].forEach(([c, x, y]) => {
+      m(Sph(.13, 20), c, x, y, 0).scale.set(1, 1.18, 1); const s = m(Cyl(.004, .004, y - .1, 4), "#FFFFFF", x / 2, (y - .1) / 2, 0); s.rotation.z = x * .4; }); }
+  else if (id === "tulips"){ for (let k = 0; k < 6; k++){ const x = (k % 3 - 1) * .16 + (k > 2 ? .08 : 0), z = (k > 2 ? .14 : 0), h = .22 + (k % 2) * .06;
+      m(Cyl(.008, .008, h, 6), "#4FAE5C", x, h / 2, z); m(Sph(.045, 12), ["#E8466C", "#FFD166", "#FF8FB4"][k % 3], x, h + .02, z).scale.set(1, 1.3, 1); } }
+  else if (id === "lamp"){ m(Sph(.14, 20), "#C9732C", 0, .07, 0).scale.set(1.3, .5, 1); m(Cyl(.02, .02, .05, 8), "#6B3A16", 0, .12, 0);
+    m(new THREE.ConeGeometry(.045, .14, 16), "#FFC23C", 0, .22, 0, {emissive:"#FF9A1F", emissiveIntensity:1.1}); }
+  else if (id === "palm"){ for (let k = 0; k < 6; k++) m(Cyl(.06 - k * .004, .065 - k * .004, .2, 12), k % 2 ? "#9A6A3A" : "#86592E", k * .015, .1 + k * .19, 0);
+    for (let k = 0; k < 7; k++){ const a = k / 7 * Math.PI * 2, leaf = m(Sph(.22, 14), "#3FA34D", .09 + Math.cos(a) * .22, 1.18, Math.sin(a) * .22); leaf.scale.set(1.4, .12, .45); leaf.rotation.y = -a; leaf.rotation.z = -.35; }
+    m(Sph(.05, 10), "#7A4A1E", .12, 1.12, .05); m(Sph(.05, 10), "#7A4A1E", .05, 1.12, -.06); }
+  return g;
+}
 function bowMesh(){ const b = new THREE.Group(); b.add(ball(.05, "#FF5C8A")); b.add(at(ball(.09, "#FF5C8A", 1.2, .8, .5), -.1, 0, 0)); b.add(at(ball(.09, "#FF5C8A", 1.2, .8, .5), .1, 0, 0)); return b; }
 
 // ---------- model loading (each file loaded once, then cloned) ----------
@@ -190,12 +217,16 @@ async function start(api, opts){
     const turn = new THREE.Group(); turn.rotation.y = -face; turn.add(model); holder.add(turn);
     anim = animator(model, holder);
     parts.blob = contactShadow(cfg.h * grow * 1.15); scene.add(parts.blob);
-    if (head && level >= 3){
+    const hat = opts.items?.hat;
+    if (head && (hat || level >= 3)){
       parts.head = head; parts.headH = cfg.h * grow;
-      parts.topper = level >= 5 ? crownMesh() : bowMesh();
-      parts.topper.scale.setScalar(level >= 5 ? .75 : .8); scene.add(parts.topper);
+      parts.topper = hat ? itemMesh(hat) : level >= 5 ? crownMesh() : bowMesh();           // a shop hat replaces the level crown/bow
+      parts.topper.scale.setScalar(hat ? .85 : level >= 5 ? .75 : .8); parts.topOff = hat ? .05 : .14; scene.add(parts.topper);
     }
   }
+  // shop toy beside the pet, shop decoration at the back of the garden
+  if (opts.items?.toy && !opts.small){ const toy = itemMesh(opts.items.toy); toy.position.set(1.0, 0, .55); toy.rotation.y = -.5; scene.add(toy); }
+  if (opts.items?.deco && !opts.small){ const deco = itemMesh(opts.items.deco); deco.position.set(-1.35, 0, -.6); deco.rotation.y = .4; scene.add(deco); }
   if (level >= 7){
     parts.stars = [];
     for (let k = 0; k < 3; k++){ const st = new THREE.Mesh(new THREE.OctahedronGeometry(.07), toon("#FFD166", {emissive:"#FFB020", emissiveIntensity:.6})); scene.add(st); parts.stars.push(st); }
@@ -286,7 +317,7 @@ async function start(api, opts){
     }
     anim?.update(dt, t, {walking:S.walking, speed:cfg.speed ? Math.min(1, S.v / cfg.speed) : 0, speedRaw:S.v, happy:S.happyT, sleepy});
     if (S.happyT > 0) S.happyT -= dt;
-    if (parts.topper){ scene.updateMatrixWorld(); const hp = parts.head.getWorldPosition(new THREE.Vector3()); parts.topper.position.set(hp.x, hp.y + parts.headH * .14, hp.z); parts.topper.rotation.y = S.ry; }
+    if (parts.topper){ scene.updateMatrixWorld(); const hp = parts.head.getWorldPosition(new THREE.Vector3()); parts.topper.position.set(hp.x, hp.y + parts.headH * (parts.topOff ?? .14), hp.z); parts.topper.rotation.y = S.ry; }
 
     // plant: gentle sway; shakes happily when watered
     if (parts.stem){ parts.stem.rotation.z = Math.sin(t*1.1)*.05 + (S.happyT > 0 ? Math.sin(t*10)*.06 : 0) + (sleepy ? .1 : 0); }

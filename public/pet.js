@@ -49,6 +49,7 @@ export function petPanel(ctx){
     el("div",{class:"row", style:"justify-content:space-between"},
       el("span",{class:"small muted"}, info.plant ? "Tap your plant to water it." : `Tap ${pet.name} to give pats!`),
       el("button",{class:"linkbtn", onclick:() => ctx.openChooser()}, "Rename or change pet")),
+    ctx.openShop ? el("button",{class:"btn primary", style:"align-self:flex-start", onclick:() => ctx.openShop()}, img("s-bag"), `Pet shop · ⭐ ${ctx.stars()} stars`) : null,
     el("div",{class:"pet-credit"}, "3D animals by Quaternius (CC0) · Bunny by Sherkiz, Cat by J-Toastie, Macaw by Poly by Google (CC-BY) · via poly.pizza"));
 }
 
@@ -56,13 +57,14 @@ export function petPanel(ctx){
 const live = new Map();
 export function petScene(ctx, type, level, mood, small = false, key = ""){
   type = petType(type);
-  const {el, img} = ctx, info = PETS[type], k = `${key}|${type}|${level}|${small}`;
+  const items = !small && key && key === ctx.me?.()?.uid ? ctx.me().shop || null : null;   // shop hat, toy and garden thing
+  const {el, img} = ctx, info = PETS[type], k = `${key}|${type}|${level}|${small}|${items?.hat || ""}|${items?.toy || ""}|${items?.deco || ""}`;
   let api = live.get(k);
   if (!api || api.disposed){
     const wrap = el("div",{class:`pet-home pet-3d ${small ? "small" : ""}`, style:`--sky:${info.sky};--ground:${info.ground}`},
       img("cloud", "deco c1"), img("cloud", "deco c2"), level >= 4 ? img("butterfly2", "deco bf") : null);
     const zzz = img("e-zzz", "pet-zzz3d");
-    api = createPet3D({type, level, mood, small, ground:info.ground,
+    api = createPet3D({type, level, mood, small, ground:info.ground, items,
       onPet:pos => {
         for (let i = 0; i < 6; i++){
           const h = img(info.plant ? "droplet" : "e-heart", "pet-heart");

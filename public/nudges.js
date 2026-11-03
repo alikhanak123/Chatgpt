@@ -71,7 +71,7 @@ export function initNudges(ctx){
     const me = ctx.me(); if (!db || !me) return;
     if (Date.now() - (lastSent[toUid] || 0) < 5000) return toast("Wait a moment before sending another one.", "clock");
     lastSent[toUid] = Date.now();
-    try { await set(push(ref(db, `nudges/${toUid}`)), {from:me.uid, k, t:Date.now()}); toast(`Sent to ${ctx.people.get(toUid)?.name || "your buddy"}!`, ALL[k]?.icon || "check"); }
+    try { await set(push(ref(db, `nudges/${toUid}`)), {from:me.uid, k, t:Date.now()}); toast(`Sent to ${ctx.people.get(toUid)?.name || "your buddy"}!`, ALL[k]?.icon || "check"); ctx.onSent?.(); }
     catch { toast("Couldn't send. Check the internet.", "lock"); }
   }
 

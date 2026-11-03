@@ -61,6 +61,10 @@ The **admin page** is at `/admin`: it shows all kids and activity and holds the 
 | `public/rewards.js` | Prayer money rewards: calculation, the child's card, the grown-up's settings. |
 | `public/chat.js` | Buddy chat with safety filters (no links/phone numbers, kind-words filter). |
 | `public/cert.js` | Badge certificates (canvas → PDF via jsPDF from cdnjs, picture, print). |
+| `public/newgames.js` | Dots and Boxes, Find the Ships, Word Search, Draw and Guess, Quick Ludo: each written once as rules, played online (games.js) or vs computer (openKit). |
+| `public/verse.js`, `stories.js`, `surah.js` | Verse of the day, weekly Prophet story + quiz, learn a surah line by line. Quran text/audio always fetched from alquran.cloud, never typed by hand. |
+| `public/shop.js` | Pet shop: stars = pet food earned − spent; hats, toys, garden items drawn in pet3d.js. |
+| `android/` | Sideload Android app (WebView of the live site) with downloads, printing, sharing, Back button and prayer-time notifications. Build: `sh android/build.sh`. |
 | `public/models/*.glb` | 3D animal models. Licences are in `public/models/CREDITS.txt`; keep the credit line shown under the pet. |
 | `public/img/*.png` | 3D Fluent emoji images used across the UI. |
 | `firestore.rules` | Firestore security rules. **Security-critical.** |
@@ -90,6 +94,7 @@ The **admin page** is at `/admin`: it shows all kids and activity and holds the 
   - `users/{uid}/private/settings` holds `parentPinHash`.
   - `users/{uid}/private/reward` holds the prayer money reward: `{currency, show, plan:{mode:'month'|'each', prize, target, each}, months:{YYYY-MM:{plan, bonus, note, paid}}}`. Only the grown-up login (or admin) can write it; the child reads it.
   - `users/{uid}.theme` is the child's chosen theme (day, ocean, candy, jungle, space).
+  - `users/{uid}` also holds: `bonusFood` (extra pet food from challenges/stories/surahs), `spent` + `shop{owned, hat, toy, deco}` (pet shop), `today{day, verse, sticker, game, surah, story}` and `ch{day, claimed}` (daily challenges), `stories{week: id}`, `surahs{n: true}`.
   - `chats/{uidA}_{uidB}/msgs/{id}` = `{from, text, t}`: buddy chat (uids sorted). Only buddies can read/write; each child's grown-up login can read; `config/app.chatOff` switches chat off.
   - `marks/{uid}_{YYYY-MM}` holds one kid's month: `{uid, month, days:{DD:{fajr:'p'|'l'|'m'|'e', …, tahajjud, ishraq}}, checked:{DD:{fajr:true…}}, qaza:{DD:{fajr:'pending'|'ok'}}}`.
   - `leaderboard/{uid}` holds numbers only: `{wk, w, wb, mk, m, mb, t}`.

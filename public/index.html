@@ -741,6 +741,25 @@ button.badge{border:none;font:inherit;color:inherit;cursor:pointer}
 .piece.can{animation:nudge 1s ease-in-out infinite;box-shadow:0 0 0 3px #fff, 0 0 12px 4px rgba(255,214,90,.9)}
 .lchip{display:inline-flex;align-items:center;gap:5px;font-weight:900}.lchip i{width:14px;height:14px;border-radius:50%;display:inline-block}
 
+/* daily challenges, story, surah, shop */
+.ch-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:16px;background:var(--surface-2);font-weight:800}
+.ch-row img{width:32px;height:32px;flex:none}
+.ch-row.ok{background:var(--ok-bg)}
+.story-card{align-items:center}.story-ic{width:52px;height:52px;flex:none}
+.story-title{font-family:var(--f-display);font-size:1.15rem;line-height:1.15;display:block}
+.story-p{font-size:1.05rem;line-height:1.55}
+.modal:has(.story-modal),.modal:has(.surah-modal){max-width:560px}
+.surah-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+.sp{border:3px solid transparent;background:var(--surface-2);border-radius:16px;padding:8px 6px;display:flex;flex-direction:column;gap:2px;text-align:center}
+.sp b{font-family:var(--f-display);font-weight:700}.sp span{font-size:.72rem;color:var(--muted)}
+.sp.done{background:var(--ok-bg)}.sp.next{border-color:var(--accent)}
+.surah-tr{text-align:center;font-weight:900;font-size:1.1rem;color:var(--grape)}
+.shop-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
+.shop-item{border:3px solid transparent;background:var(--surface-2);border-radius:18px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;text-align:center}
+.shop-item img{width:44px;height:44px}.shop-item b{font-size:.82rem;line-height:1.1}
+.shop-price{font-size:.74rem;font-weight:900;color:var(--muted)}
+.shop-item.using{border-color:var(--ok);background:var(--ok-bg)}
+
 /* verse of the day */
 .verse-ar{font-family:"Amiri","Scheherazade New","Traditional Arabic",serif;font-size:1.7rem;line-height:2.1;text-align:center;font-weight:400;color:var(--ink)}
 .verse-simple{font-family:var(--f-display);font-weight:600;font-size:1.2rem;line-height:1.35;padding:12px 14px;border-radius:16px;background:color-mix(in srgb, var(--sun) 16%, var(--surface))}
@@ -837,6 +856,9 @@ import { rewardCard, rewardPanel, earned as rewardEarned, rewardStart, money } f
 import { openCertificate } from "/cert.js";
 import { initChat } from "/chat.js";
 import { verseCard } from "/verse.js";
+import { STORIES, storyOfWeek } from "/stories.js";
+import { surahCard, openSurah } from "/surah.js";
+import { SHOP, openShop, ownedSet } from "/shop.js";
 let nudges = null;   // stickers between buddies (Realtime Database)
 import { loadTimes, prayerWindow, prayerToday, fmtTime, fmtIn, RAKATS, KIND_LABEL, openGuide } from "/prayer.js";
 let games = null;   // friends games (Realtime Database)
@@ -1343,7 +1365,7 @@ const celebrated = new Set();
 // ---------- pet ----------
 // Food = every prayer that counts (on time / late / did-it-later / bonus), across all saved months.
 function petFood(uid){
-  let n = 0;
+  let n = Math.max(0, +people.get(uid)?.bonusFood || 0);   // extra food from daily challenges, stories and surahs
   for (const [id, m] of marks) if (id.startsWith(uid + "_")) for (const [dd, day] of Object.entries(m.days || {})){
     const d = `${m.month}-${dd}`;
     for (const [k, s] of Object.entries(day || {})){
@@ -1355,7 +1377,139 @@ function petFood(uid){
 }
 const petCtx = () => ({el, img, me:() => me, food:petFood, todayCount:uid => dayStatuses(uid, curPrayerDay()).filter(s => s === "p" || s === "l").length + BONUS.filter(b => statusOf(uid, curPrayerDay(), b.k) === "p").length,
   nextPrayerName:() => nextPrayer()?.p.en, confetti, toast, openChooser:openPetChooser,
+  stars:() => stars(), openShop:asParent ? null : openPetShop,
   save:async pet => { try { me.pet = pet; $modal.replaceChildren(); render(); await updateDoc(doc(db, "users", me.uid), {pet, petLevel:levelFor(petFood(me.uid))}); confetti(); toast(`Say hi to ${pet.name}!`, "e-hearts"); } catch { toast("Couldn't save. Try again.", "lock"); } }});
+// ---------- stars, pet shop ----------
+const stars = () => me ? Math.max(0, petFood(me.uid) - (+me.spent || 0)) : 0;
+function openPetShop(){
+  if (!me?.pet) return toast("Adopt a pet first!", "e-hearts");
+  openShop({el, img, modal, toast, confetti}, {petName:me.pet.name, stars, shop:() => me.shop,
+    buy:async it => {
+      const owned = ownedSet(me.shop); owned.add(it.id);
+      const shop = {...(me.shop || {}), owned:[...owned].join(","), [it.kind]:it.id};
+      await updateDoc(doc(db, "users", me.uid), {shop, spent:increment(it.price)});
+      me.shop = shop; me.spent = (+me.spent || 0) + it.price; render();
+    },
+    use:async (kind, id) => { const shop = {...(me.shop || {}), [kind]:id}; await updateDoc(doc(db, "users", me.uid), {shop}); me.shop = shop; render(); }});
+}
+
+// ---------- daily challenges ----------
+// Things done today: me.today = {day, verse, sticker, game, surah, story}. Claimed rewards: me.ch = {day, claimed:"id,id"}.
+function markToday(kind){
+  if (!me || asParent || me.disabled) return;
+  const day = todayStr(); if (me.today?.day === day && me.today[kind]) return;
+  const today = me.today?.day === day ? {...me.today, [kind]:1} : {day, [kind]:1};
+  me.today = today; updateDoc(doc(db, "users", me.uid), {today}).catch(() => {}); render();
+}
+const did = kind => me?.today?.day === todayStr() && !!me.today[kind];
+const CHALLENGES = {
+  fajr:  {icon:"p-fajr",   text:"Pray Fajr on time",                    test:() => statusOf(me.uid, curPrayerDay(), "fajr") === "p"},
+  all5:  {icon:"star",     text:"Pray all 5 prayers today",            test:() => dayStatuses(me.uid, curPrayerDay()).every(s => s === "p" || s === "l")},
+  ontime:{icon:"clock",    text:"Pray 3 prayers on time",              test:() => dayStatuses(me.uid, curPrayerDay()).filter(s => s === "p").length >= 3},
+  bonus: {icon:"b-ishraq", text:"Pray Ishraq or Tahajjud",             test:() => BONUS.some(b => statusOf(me.uid, curPrayerDay(), b.k) === "p")},
+  verse: {icon:"book",     text:"Read today's verse",                  test:() => did("verse")},
+  sticker:{icon:"e-wave",  text:"Send a buddy a kind sticker",         test:() => did("sticker"), needsBuddy:true},
+  game:  {icon:"game",     text:"Win a game",                          test:() => did("game")},
+  surah: {icon:"book",     text:"Practise a surah line",               test:() => did("surah")},
+  story: {icon:"st-boat",  text:"Read this week's Prophet story",      test:() => did("story")},
+};
+// 3 challenges a day: 1 about prayer + 2 others, the same all day
+function todaysChallenges(){
+  const day = todayStr(), seed = [...day].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 9973, 7);
+  const pray = ["fajr", "all5", "ontime", "bonus"], rest = ["verse", "game", "surah", "story", "sticker"].filter(k => !CHALLENGES[k].needsBuddy || (me.friends || []).length);
+  const a = pray[seed % pray.length], b = rest[seed % rest.length], c = rest[(seed * 7 + 3) % rest.length] === b ? rest[(seed + 1) % rest.length] : rest[(seed * 7 + 3) % rest.length];
+  return [a, b, c];
+}
+function challengesCard(){
+  if (asParent) return null;
+  const day = todayStr(), claimed = new Set(me.ch?.day === day ? String(me.ch.claimed || "").split(",").filter(Boolean) : []);
+  const list = todaysChallenges(), done = list.filter(k => CHALLENGES[k].test()).length;
+  const claim = async k => {
+    const c = [...claimed, k].join(",");
+    try { await updateDoc(doc(db, "users", me.uid), {ch:{day, claimed:c}, bonusFood:increment(2)}); me.ch = {day, claimed:c}; me.bonusFood = (+me.bonusFood || 0) + 2; confetti(); toast("+2 pet food! Well done!", "food"); render(); }
+    catch { toast("Couldn't save. Try again.", "lock"); }
+  };
+  return el("section",{class:"panel stack", id:"challenges"},
+    el("div",{class:"row", style:"justify-content:space-between"},
+      secTitle("ch-target", "Today's challenges", "Finish one, then claim +2 pet food"),
+      el("span",{class:"lvl-chip"}, `${done} of 3`)),
+    el("div",{class:"stack", style:"gap:8px"}, list.map(k => { const ch = CHALLENGES[k], ok = ch.test(), got = claimed.has(k);
+      return el("div",{class:`ch-row ${ok ? "ok" : ""}`}, img(ch.icon), el("span",{style:"flex:1;min-width:0"}, ch.text),
+        got ? el("span",{class:"chip g-ex"}, "Claimed ✓") : ok ? el("button",{class:"btn approve sm", onclick:() => claim(k)}, "Claim +2") : el("span",{class:"small muted"}, "Not yet")); })));
+}
+
+// ---------- prayer reminders (Android app 1.1 and newer) ----------
+// The page tells the app the start time of each prayer for today and tomorrow; the app shows a notification then.
+const appReminders = () => typeof window.AndroidApp?.setReminders === "function";
+let remindOn = false, remindAt = 0; try { remindOn = localStorage.getItem("salah-remind") === "on"; } catch {}
+function scheduleReminders(force){
+  if (!appReminders() || !me || asParent || me.disabled || !timesOK) return;
+  if (!force && Date.now() - remindAt < 10 * 60000) return;
+  remindAt = Date.now();
+  if (!remindOn) return window.AndroidApp.setReminders("[]");
+  const list = [], now = Date.now(), d0 = curPrayerDay();
+  for (const d of [d0, addDays(d0, 1)]) for (const p of PRAYERS){ const w = win(d, p.k);
+    if (w && +w.start > now) list.push({t:+w.start, title:`Time for ${p.en}! 🕌`, text:`${me.name}, it's ${p.en} time. Pray, then tick it in Salah Tracker.`}); }
+  return window.AndroidApp.setReminders(JSON.stringify(list));
+}
+function remindersCard(){
+  if (asParent || !window.AndroidApp) return null;
+  if (!appReminders()) return el("section",{class:"panel row"}, img("ch-bell", "g-ic"),
+    el("div",{style:"flex:1;min-width:0"}, el("b",{},"Prayer reminders"), el("div",{class:"small muted"},"Install the new app (version 1.1) to get a reminder at every prayer time.")));
+  return el("section",{class:"panel row"}, img("ch-bell", "g-ic"),
+    el("div",{style:"flex:1;min-width:0"}, el("b",{},"Prayer reminders"), el("div",{class:"small muted"}, remindOn ? "On: a notification when each prayer time starts." : "Get a notification when each prayer time starts.")),
+    el("button",{class:`btn ${remindOn ? "ghost" : "primary"} sm`, onclick:() => {
+      remindOn = !remindOn; try { localStorage.setItem("salah-remind", remindOn ? "on" : "off"); } catch {}
+      if (remindOn && !window.AndroidApp.canNotify()) window.AndroidApp.askNotify();
+      scheduleReminders(true); toast(remindOn ? "Reminders on! 🔔" : "Reminders off", "ch-bell"); render();
+    }}, remindOn ? "Turn off" : "Turn on"));
+}
+
+// ---------- Prophet story of the week ----------
+function storyCard(){
+  const {story, week} = storyOfWeek(), read = !!me.stories?.[week];
+  return el("section",{class:"panel row story-card"}, img(story.icon, "story-ic"),
+    el("div",{style:"flex:1;min-width:0"}, el("div",{class:"small muted"},"Prophet story of the week"), el("b",{class:"story-title"}, story.title)),
+    el("button",{class:`btn ${read ? "ghost" : "primary"} sm`, onclick:() => openStory(story, week)}, read ? "Read again" : "Read"));
+}
+function openStory(story, week){
+  const answers = story.quiz.map(() => null);
+  modal(close => {
+    const quizBox = el("div",{class:"stack", style:"gap:10px"});
+    const drawQuiz = () => quizBox.replaceChildren(el("b",{},"Quick quiz"), ...story.quiz.map(([q, a, ...w], i) => {
+      const opts = [a, ...w].sort((x, y) => (x + i).localeCompare(y + i));
+      return el("div",{class:"stack", style:"gap:6px"}, el("div",{style:"font-weight:900"}, q),
+        el("div",{class:"quiz-opts"}, opts.map(o => el("button",{class:`quiz-opt ${answers[i] == null ? "" : o === a ? "right" : o === answers[i] ? "wrong" : ""}`, disabled:answers[i] != null,
+          onclick:() => { answers[i] = o; drawQuiz(); if (answers.every(x => x != null)) finished(); }}, o))));
+    }));
+    const finished = async () => {
+      const right = story.quiz.filter(([, a], i) => answers[i] === a).length;
+      markToday("story");
+      if (!me.stories?.[week] && !asParent){
+        try { await updateDoc(doc(db, "users", me.uid), {[`stories.${week}`]:story.id, bonusFood:increment(3)}); me.stories = {...(me.stories || {}), [week]:story.id}; me.bonusFood = (+me.bonusFood || 0) + 3; } catch {}
+        toast(`${right} of 3 right! +3 pet food for reading the story`, "food");
+      } else toast(`${right} of 3 right!`, "check");
+      if (right === 3) confetti();
+    };
+    drawQuiz();
+    return el("div",{class:"stack story-modal"},
+      el("div",{class:"sec-title"}, img(story.icon), el("h2",{}, story.title)),
+      ...story.paras.map(p => el("p",{class:"story-p"}, p)),
+      el("div",{class:"verse-simple"}, el("b",{},"Lesson: "), story.lesson),
+      quizBox,
+      el("div",{class:"small muted"}, `From the Quran: ${story.note}`),
+      el("div",{class:"actions"}, el("button",{class:"btn primary", onclick:close},"Close")));
+  });
+}
+
+// ---------- learn a surah ----------
+function learnSurahCard(){
+  return surahCard({el, img, done:me.surahs || {}, open:s => openSurah({el, img, modal, toast, confetti}, s, {
+    onLine:() => markToday("surah"),
+    onLearned:async n => { if (asParent || me.surahs?.[n]) return;
+      try { await updateDoc(doc(db, "users", me.uid), {[`surahs.${n}`]:true, bonusFood:increment(5)}); me.surahs = {...(me.surahs || {}), [n]:true}; me.bonusFood = (+me.bonusFood || 0) + 5; } catch {} }})});
+}
+
 function openPetChooser(){
   modal(close => el("div",{class:"stack"}, el("div",{class:"sec-title"}, img("e-hearts"), el("h2",{}, me.pet ? "Change your pet" : "Choose your pet")),
     el("p",{class:"small muted"}, me.pet ? "Your food and level stay the same if you change pets." : "Every prayer you pray feeds your pet and helps it grow."),
@@ -1942,10 +2096,12 @@ function renderKid(){
   const wide = (left, right) => WIDE.matches ? [el("div",{class:"cols"}, el("div",{class:"col"}, ...left), el("div",{class:"col side"}, ...right))] : [...left, ...right];
   const gamesEl = games?.panel() || el("div",{class:"panel muted"},"Games are loading…");
   const pages = {
-    salah: wide([hero, check, daySheet, verseCard({el, img}), renderCalendar()], [scores, badges, history(), gradeGuide()]),
+    salah: wide([hero, check, daySheet, challengesCard(), remindersCard(), verseCard({el, img, read:did("verse"), onRead:() => { markToday("verse"); toast("MashaAllah! Keep reading every day.", "book"); }}), storyCard(), renderCalendar()],
+      [learnSurahCard(), scores, badges, history(), gradeGuide()]),
     play: wide([petPanel(petCtx()), gamesEl], [chatStrip, raceBoard()]),
   };
   show(bar, ...(pages[tab] || pages.salah));
+  scheduleReminders();
   paintTabbar(true);
 }
 
@@ -2247,9 +2403,9 @@ try {
   const cfg = await fetch("/__/firebase/init.json").then(r => { if (!r.ok) throw 0; return r.json(); });
   const app = initializeApp(cfg); fbCfg = cfg;
   auth = getAuth(app); db = getFirestore(app);
-  nudges = initNudges({app, dbURL: cfg.databaseURL || "https://family-salah-tracker-765ed-default-rtdb.europe-west1.firebasedatabase.app", me:() => me, people, el, img, avatar, toast, modal, rerender:() => render()});
+  nudges = initNudges({app, dbURL: cfg.databaseURL || "https://family-salah-tracker-765ed-default-rtdb.europe-west1.firebasedatabase.app", me:() => me, people, el, img, avatar, toast, modal, rerender:() => render(), onSent:() => markToday("sticker")});
   games = initGames({app, dbURL: cfg.databaseURL || "https://family-salah-tracker-765ed-default-rtdb.europe-west1.firebasedatabase.app",
-    me: () => me, people, el, img, avatar, toast, confetti, rerender: () => render()});
+    me: () => me, people, el, img, avatar, toast, confetti:() => { confetti(); markToday("game"); }, rerender: () => render()});
   refreshTimes();
   chat = initChat({db, fs:{collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp}, me:() => me, people, el, img, avatar, toast, modal,
     rerender:() => { if (!$modal.firstChild) render(); }, enabled:() => !chatOff, readOnly:() => asParent});

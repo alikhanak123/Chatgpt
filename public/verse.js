@@ -53,7 +53,7 @@ async function loadVerse(ref){
 }
 
 // The card on the Salah tab. Text that loads from the internet fills in when it arrives.
-export function verseCard({el, img}){
+export function verseCard({el, img, read, onRead}){
   const {ref, simple} = verseOfDay();
   const ar = el("div",{class:"verse-ar", lang:"ar", dir:"rtl"}), en = el("div",{class:"verse-en small muted"}), src = el("div",{class:"verse-src small muted"}, `Quran ${ref}`);
   const listen = el("button",{class:"btn ghost sm", hidden:true}, "▶ Listen");
@@ -73,5 +73,6 @@ export function verseCard({el, img}){
       listen),
     ar,
     el("div",{class:"verse-simple"}, el("b",{},"In simple words: "), simple),
+    onRead ? el("button",{class:`btn ${read ? "ghost" : "primary"} sm`, style:"align-self:center", disabled:!!read, onclick:onRead}, read ? "Read today ✓" : "I read it! ✓") : null,
     en, src);
 }
