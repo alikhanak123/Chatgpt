@@ -173,10 +173,12 @@ export function openSolo(type, {level = "medium", bots = 1, topic = "mixed"} = {
     let b, turn, first = "me";
     const start = () => { b = ".".repeat(C4C*C4R); turn = first; first = first === "me" ? "cpu" : "me"; draw(); if (turn === "cpu") later(cpuGo, 500); };
     const end = () => { const w = winner(b); if (!w) return false; cheer(w === "1" ? "me" : w === "2" ? "cpu" : "draw"); draw(w); return true; };
+    let seen = "";   // the board as last drawn, so only the newly dropped disc falls in
     const cpuGo = () => { b = drop(b, pickCpu(b), "2"); if (!end()){ turn = "me"; draw(); } };
     function draw(w){
       const cols = []; for (let c=0;c<C4C;c++) cols.push(el("button",{class:"c4-col", disabled: !!w || turn !== "me" || b[c] !== ".", onclick:() => { b = drop(b,c,"1"); if (!end()){ turn = "cpu"; draw(); later(cpuGo, 450); } }},
-        Array.from({length:C4R}, (_,r) => { const v = b[r*C4C+c]; return el("span",{class:"c4-slot"}, v === "1" ? img("disc-red","c4-disc") : v === "2" ? img("disc-yellow","c4-disc") : null); })));
+        Array.from({length:C4R}, (_,r) => { const v = b[r*C4C+c]; const cls = "c4-disc" + (seen.length === b.length && seen[r*C4C+c] === "." ? " new" : ""); return el("span",{class:"c4-slot"}, v === "1" ? img("disc-red", cls) : v === "2" ? img("disc-yellow", cls) : null); })));
+      seen = b;
       frame(w ? (w === "1" ? "You win! 🎉" : w === "2" ? "Computer wins!" : "It's a draw!") : turn === "me" ? "Your turn! You are red." : "Computer is thinking…",
         el("div",{class:"c4-wrap"}, el("div",{class:"c4"}, cols)), {done:!!w, again:start, go:!w && turn === "me"});
     }
@@ -309,14 +311,14 @@ export function openSolo(type, {level = "medium", bots = 1, topic = "mixed"} = {
       if (puck.y < -BR) return "me"; if (puck.y > H+BR) return "cpu";
       collide(mine); collide(them); return null;
     }
-    const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+    const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim(), RINK = {ice:"#EAF5FF", line:"#7FB6E8", puck:"#14163F"};
     function draw(){
       const s = scale*devicePixelRatio, c = canvas.getContext("2d"); c.setTransform(s,0,0,s,0,0); c.clearRect(0,0,W,H);
-      c.fillStyle = css("--surface-2"); c.beginPath(); c.roundRect(0,0,W,H,.06); c.fill();
-      c.strokeStyle = css("--line"); c.lineWidth = .012; c.beginPath(); c.moveTo(0,H/2); c.lineTo(W,H/2); c.stroke(); c.beginPath(); c.arc(W/2,H/2,.14,0,7); c.stroke();
+      c.fillStyle = RINK.ice; c.beginPath(); c.roundRect(0,0,W,H,.06); c.fill();
+      c.strokeStyle = RINK.line; c.lineWidth = .012; c.beginPath(); c.moveTo(0,H/2); c.lineTo(W,H/2); c.stroke(); c.beginPath(); c.arc(W/2,H/2,.14,0,7); c.stroke();
       c.fillStyle = css("--grape"); c.fillRect(W/2-GOAL/2, 0, GOAL, .025); c.fillStyle = css("--accent"); c.fillRect(W/2-GOAL/2, H-.025, GOAL, .025);
       for (const [p, col] of [[them, css("--grape")], [mine, css("--accent")]]){ c.fillStyle = col; c.beginPath(); c.arc(p.x,p.y,PR,0,7); c.fill(); c.fillStyle = "rgba(255,255,255,.35)"; c.beginPath(); c.arc(p.x,p.y,PR*.5,0,7); c.fill(); }
-      c.fillStyle = css("--ink"); c.beginPath(); c.arc(puck.x,puck.y,BR,0,7); c.fill();
+      c.fillStyle = RINK.puck; c.beginPath(); c.arc(puck.x,puck.y,BR,0,7); c.fill();
       if (cd > 0 && !over){ c.fillStyle = "rgba(0,0,0,.35)"; c.beginPath(); c.roundRect(.3,H/2-.11,.4,.22,.05); c.fill(); c.fillStyle = "#fff"; c.textAlign = "center"; c.textBaseline = "middle"; c.font = "700 .14px Fredoka, sans-serif"; c.fillText(String(Math.ceil(cd)), W/2, H/2); }
     }
     function frameLoop(now){

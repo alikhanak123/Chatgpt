@@ -825,6 +825,101 @@ body.slim-sky .hero h1{font-size:clamp(1.5rem,6vw,2rem)}
 .toast img{width:30px;height:30px;flex:none}
 #confetti{position:fixed;inset:0;pointer-events:none;z-index:30;width:100%;height:100%}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+/* ===== Game arena: every game plays on a night-sky stage with glossy boards (the how-to-pray guide keeps the light look) ===== */
+.game-screen:not(.guide-screen){
+  --bg:#12153F; --surface:#2B3080; --surface-2:#1F2366; --ink:#FFFFFF; --muted:#BFC3F5; --line:#0C0E36; --grape:#C9BEFF;
+  --ok:#4BE3B5; --ok-bg:#0E5A4E; --miss-bg:#6E1A33; --late-bg:#5C4300; --shadow:0 14px 30px -14px rgba(0,0,0,.75);
+  color:var(--ink); background:radial-gradient(120% 70% at 50% 0%,#3B4CCA 0%,#1B1F5E 45%,#0D0F33 100%); gap:16px}
+.game-screen:not(.guide-screen)::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background:
+  radial-gradient(2px 2px at 12% 18%,rgba(255,255,255,.55),transparent),radial-gradient(2px 2px at 82% 12%,rgba(255,255,255,.4),transparent),
+  radial-gradient(1.5px 1.5px at 64% 30%,rgba(255,255,255,.35),transparent),radial-gradient(2px 2px at 30% 72%,rgba(255,255,255,.28),transparent),
+  radial-gradient(1.5px 1.5px at 90% 64%,rgba(255,255,255,.32),transparent),radial-gradient(1.5px 1.5px at 8% 52%,rgba(255,255,255,.3),transparent),
+  radial-gradient(60% 30% at 50% 100%,rgba(124,92,255,.35),transparent)}
+.game-screen:not(.guide-screen) .gs-title{text-shadow:0 2px 12px rgba(0,0,0,.5)}
+.game-screen:not(.guide-screen) .btn.ghost{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.22);box-shadow:none}
+.game-screen:not(.guide-screen) .lvl-chip{background:rgba(255,255,255,.12);color:#FFD86B;border:1px solid rgba(255,255,255,.22)}
+.game-screen:not(.guide-screen) .gs-player{background:linear-gradient(180deg,rgba(255,255,255,.16),rgba(255,255,255,.07));border:1.5px solid rgba(255,255,255,.2);box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.game-screen:not(.guide-screen) .gs-player.active{border-color:#5CF2C4;box-shadow:0 0 0 3px rgba(92,242,196,.3),0 0 26px rgba(92,242,196,.5)}
+.game-screen:not(.guide-screen) .gs-vs{color:#FFD86B}
+.game-screen:not(.guide-screen) .gs-status{text-shadow:0 2px 10px rgba(0,0,0,.5)}
+.game-screen:not(.guide-screen) .note{background:rgba(255,255,255,.1);color:#fff}
+.game-screen:not(.guide-screen) .eyebrow{color:#FFD86B}
+/* dice: white with dark pips, like real ones */
+.game-screen .dice,.game-screen .dice-big{background:linear-gradient(145deg,#fff,#DDE3F5);color:#22204A;box-shadow:0 4px 0 #9AA3C7,0 10px 18px rgba(0,0,0,.45)}
+.game-screen .dice span.pip{background:#22204A}
+.game-screen .dice.empty{background:rgba(255,255,255,.14);box-shadow:none}
+/* Four in a Row: glossy stand-up board, discs fall in */
+.game-screen .c4-wrap{perspective:900px;padding-bottom:28px}
+.game-screen .c4{position:relative;gap:6px;padding:12px;border-radius:22px;background:linear-gradient(160deg,#4FA8FF 0%,#2468E8 55%,#163FA8 100%);
+  box-shadow:inset 0 2px 0 #9CD0FF,inset 0 -6px 12px #0C2A7A,0 10px 0 #0F2E86,0 30px 40px rgba(0,0,0,.6);transform:rotateX(6deg);transform-origin:50% 100%}
+.game-screen .c4::after{content:"";position:absolute;left:-4%;right:-4%;bottom:-26px;height:22px;border-radius:12px;background:linear-gradient(#2E6BE0,#0E2A7C);box-shadow:0 12px 24px rgba(0,0,0,.6)}
+.game-screen .c4-col{gap:6px}
+.game-screen .c4-col:not(:disabled):hover{background:rgba(255,255,255,.15);box-shadow:0 0 18px rgba(156,208,255,.5)}
+.game-screen .c4-slot{background:#0B0E33;box-shadow:inset 0 5px 8px rgba(0,0,0,.8),inset 0 -2px 3px rgba(111,168,255,.4),0 1px 0 #8CC4FF;overflow:visible}
+.game-screen .c4-disc{object-fit:none;object-position:300% 300%;border-radius:50%;animation:none}
+.game-screen .c4-disc.new{animation:drop2 .5s cubic-bezier(.3,1.25,.5,1)}
+.game-screen .c4-disc[src*="disc-red"]{background:radial-gradient(circle at 35% 28%,#FFB3C0 0%,#FF4D6D 28%,#D81E45 62%,#8E0F2B 100%);box-shadow:inset 0 0 0 4px rgba(255,255,255,.13),inset 0 -5px 8px #5a0a1c,0 0 14px rgba(255,77,109,.6)}
+.game-screen .c4-disc[src*="disc-yellow"]{background:radial-gradient(circle at 35% 28%,#FFF6C2 0%,#FFD43B 28%,#F5A300 62%,#9A6200 100%);box-shadow:inset 0 0 0 4px rgba(255,255,255,.2),inset 0 -5px 8px #6b4300,0 0 14px rgba(255,212,59,.6)}
+@keyframes drop2{0%{transform:translateY(-520%)}70%{transform:translateY(0)}82%{transform:translateY(-14%)}100%{transform:none}}
+/* Tic-Tac-Toe: glass tiles */
+.game-screen .ttt{aspect-ratio:auto;padding:12px;border-radius:26px;background:linear-gradient(160deg,#5B4BD6,#2B2A8C);box-shadow:inset 0 2px 0 rgba(255,255,255,.3),0 10px 0 #1B1A63,0 26px 36px rgba(0,0,0,.55)}
+.game-screen .ttt-cell{background:linear-gradient(160deg,#151A52,#0B0E33);box-shadow:inset 0 4px 8px rgba(0,0,0,.7),0 1px 0 rgba(255,255,255,.25);border-radius:16px;aspect-ratio:1}
+.game-screen .ttt-cell img{filter:drop-shadow(0 4px 6px rgba(0,0,0,.5))}
+.game-screen .ttt-cell.win{background:radial-gradient(circle,#1E8C74,#0B4A3E);box-shadow:0 0 22px rgba(92,242,196,.7)}
+/* Memory: card backs with a shine, white faces */
+.game-screen .mem-card{background:linear-gradient(135deg,#7C5CFF 0%,#D93A62 100%);box-shadow:inset 0 2px 0 rgba(255,255,255,.35),0 5px 0 #3B2A8C,0 12px 18px rgba(0,0,0,.45);border-radius:18px;position:relative;overflow:hidden}
+.game-screen .mem-card:not(.up)::after{content:"";position:absolute;inset:0;background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.28) 50%,transparent 65%)}
+.game-screen .mem-card.up{background:linear-gradient(160deg,#fff,#E9ECFA);box-shadow:0 5px 0 #9AA3C7,0 12px 18px rgba(0,0,0,.45)}
+.game-screen .mem-card.got.mine{outline:3px solid #FF6B8E;box-shadow:0 0 18px rgba(255,107,142,.7)}
+.game-screen .mem-card.got.theirs{outline:3px solid #5CB6FF}
+/* Chess: wooden board on a frame */
+.game-screen .chess{border:8px solid #6B4423;border-radius:14px;box-shadow:inset 0 0 0 2px #C99A5B,0 10px 0 #3F2712,0 28px 40px rgba(0,0,0,.6)}
+.game-screen .cs.lt{background:linear-gradient(135deg,#F7E7C6,#EBD3A6)}.game-screen .cs.dk{background:linear-gradient(135deg,#B98654,#9A6A3C)}
+.game-screen .pc{filter:drop-shadow(0 3px 2px rgba(0,0,0,.4))}
+/* Snakes and Ladders: keep the bright board, add a frame */
+.game-screen .sl-board{--surface:#FFFFFF;--muted:#66618C;border:6px solid #F5A524;box-shadow:0 10px 0 #9A6200,0 28px 40px rgba(0,0,0,.6)}
+.game-screen .sl-token{background:#fff;box-shadow:0 4px 8px rgba(0,0,0,.5)}
+/* Air Hockey: an ice rink under spotlights */
+.game-screen .hockey{border:6px solid #C8D6F0;box-shadow:0 0 0 3px #5B6BD6,0 0 40px rgba(124,180,255,.55),0 28px 40px rgba(0,0,0,.6)}
+/* Rock Paper Scissors */
+.game-screen .rps-hand{background:linear-gradient(160deg,#343A99,#1B1F66);border:1.5px solid rgba(255,255,255,.2);box-shadow:inset 0 2px 0 rgba(255,255,255,.2),0 14px 26px rgba(0,0,0,.5)}
+.game-screen .rps-hand img,.game-screen .rps-btn img{filter:drop-shadow(0 6px 8px rgba(0,0,0,.45))}
+.game-screen .rps-btn{background:linear-gradient(160deg,#3A40A6,#23277A);color:#fff;box-shadow:inset 0 2px 0 rgba(255,255,255,.22),0 6px 0 #0C0E36,0 14px 20px rgba(0,0,0,.4)}
+.game-screen .rps-btn:active{box-shadow:inset 0 2px 0 rgba(255,255,255,.22),0 2px 0 #0C0E36}
+.game-screen .rps-q{color:#8F96E8}
+/* Balloon Words and Quiz Time: keys and answers as glossy buttons */
+.game-screen .key,.game-screen .quiz-opt,.game-screen .ws-cell{background:linear-gradient(160deg,#3A40A6,#262B82);color:#fff;box-shadow:inset 0 1.5px 0 rgba(255,255,255,.22),0 4px 0 #0C0E36}
+.game-screen .key.hit{background:linear-gradient(160deg,#35D6A6,#0E9C7A);box-shadow:0 0 14px rgba(92,242,196,.6)}
+.game-screen .key.miss{background:rgba(255,255,255,.06);color:#7C82C9;box-shadow:none}
+.game-screen .slot{border-bottom-color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5)}
+.game-screen .slot.on{border-color:#5CF2C4;color:#5CF2C4}
+.game-screen .balloon img{filter:hue-rotate(var(--h)) drop-shadow(0 6px 8px rgba(0,0,0,.4))}
+.game-screen .quiz-q{text-shadow:0 2px 10px rgba(0,0,0,.5)}
+.game-screen .quiz-opt.right{background:linear-gradient(160deg,#35D6A6,#0E9C7A);border-color:#9CFFE0;box-shadow:0 0 18px rgba(92,242,196,.6)}
+.game-screen .quiz-opt.wrong{background:linear-gradient(160deg,#F0546F,#B01E3F);border-color:#FFB3C0}
+.game-screen .quiz-opt.picked{border-color:#5CB6FF;background:linear-gradient(160deg,#3F6BD0,#2A3F9C)}
+.game-screen .quiz-timer{background:rgba(255,255,255,.14)}
+/* Word Search */
+.game-screen .ws-cell.sel{background:linear-gradient(160deg,#FFE27A,#F5A524);color:#3a2600;box-shadow:0 0 16px rgba(255,214,90,.8)}
+.game-screen .ws-word{border-color:rgba(255,255,255,.4);color:#fff}
+/* Dots and Boxes */
+.game-screen .dots-board{--line:#6C72C9;background:linear-gradient(160deg,#262B82,#151A52);border:1.5px solid rgba(255,255,255,.2);box-shadow:inset 0 2px 0 rgba(255,255,255,.15),0 20px 36px rgba(0,0,0,.55);padding:14px}
+/* Find the Ships: deep sea with moving light */
+.game-screen .sea{position:relative;gap:5px;padding:10px;border:5px solid #0A2C52;background:linear-gradient(160deg,#0A3F78,#1183CC 60%,#19A7E0);box-shadow:inset 0 4px 16px rgba(0,0,0,.5),0 10px 0 #061B36,0 26px 36px rgba(0,0,0,.55);overflow:hidden}
+.game-screen .sea::before{content:"";position:absolute;inset:-50%;pointer-events:none;background:repeating-radial-gradient(ellipse at 30% 20%,rgba(255,255,255,.09) 0 6px,transparent 6px 26px);animation:seaflow 9s linear infinite}
+@keyframes seaflow{to{transform:translate(26px,26px)}}
+.game-screen .cell2{position:relative;background:rgba(255,255,255,.13);box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.game-screen .cell2.ship{background:linear-gradient(160deg,#C9D3E0,#7C8AA0);box-shadow:inset 0 2px 0 #fff,0 2px 4px rgba(0,0,0,.4)}
+.game-screen .cell2.hit{background:radial-gradient(circle,#FFD23B 0%,#FF6B3D 45%,#B3261E 100%);box-shadow:0 0 14px rgba(255,107,61,.9);animation:pop .35s cubic-bezier(.2,1.6,.4,1)}
+.game-screen .cell2.miss{background:rgba(255,255,255,.05)}
+/* Ludo: wooden frame, raised pieces */
+.game-screen .ludo{border:8px solid #6B4423;box-shadow:inset 0 0 0 2px #C99A5B,0 10px 0 #3F2712,0 28px 40px rgba(0,0,0,.6)}
+.game-screen .piece{box-shadow:0 3px 5px rgba(0,0,0,.5),inset 0 -4px 0 rgba(0,0,0,.25),inset 0 4px 4px rgba(255,255,255,.65)}
+/* Draw and Guess */
+.game-screen .draw-canvas{border:6px solid #C8D6F0;box-shadow:0 0 0 3px #5B6BD6,0 24px 36px rgba(0,0,0,.55)}
+.game-screen .draw-word{color:#FFD86B}
+@media (prefers-reduced-motion:reduce){.game-screen .sea::before,.game-screen .c4-disc.new{animation:none}}
+/* ===== end game arena ===== */
 </style>
 </head>
 <body>

@@ -78,6 +78,7 @@ export function initGames(ctx){
 
   let inbox = {};                 // gid -> entry
   let inboxOff = null, seenInvites = new Set();
+  let c4Seen = "";   // Four in a Row board as last drawn, so only the newly dropped disc falls in
   let pick = {type:"c4", friend:null, many:new Set(), mode:"friend", level:"medium", bots:1, topic:"mixed"};
   let Chess = null; loadChess().then(C => { Chess = C; if (open?.game?.type === "chess") renderScreen(); }).catch(()=>{});
   let open = null;                // currently open game screen state
@@ -367,8 +368,10 @@ export function initGames(ctx){
       const full = g.board[c] !== ".";
       cols.push(el("button",{class:"c4-col", disabled:!myTurn || full, "aria-label":`Drop in column ${c+1}`, onclick:()=>move(b => c4Drop(b, c, side === "p1" ? "1" : "2"))},
         Array.from({length:C4_ROWS}, (_,r) => { const v = g.board[r*C4_COLS+c];
-          return el("span",{class:"c4-slot"}, v === "1" ? img("disc-red","c4-disc") : v === "2" ? img("disc-yellow","c4-disc") : null); })));
+          const cls = "c4-disc" + (c4Seen.length === g.board.length && c4Seen[r*C4_COLS+c] === "." ? " new" : "");
+          return el("span",{class:"c4-slot"}, v === "1" ? img("disc-red", cls) : v === "2" ? img("disc-yellow", cls) : null); })));
     }
+    c4Seen = g.board;
     return el("div",{class:"c4-wrap"},
       el("div",{class:"small muted", style:"text-align:center"}, side === "p1" ? "You are red. Tap a column to drop." : "You are yellow. Tap a column to drop."),
       el("div",{class:"c4"}, cols));
@@ -779,8 +782,8 @@ export function initGames(ctx){
       c.setTransform(s,0,0,s,0,0);
       c.clearRect(0,0,W,H);
       // rink
-      c.fillStyle = css("--surface-2"); roundRect(c, 0, 0, W, H, .06); c.fill();
-      c.strokeStyle = css("--line"); c.lineWidth = .012;
+      c.fillStyle = "#EAF5FF"; roundRect(c, 0, 0, W, H, .06); c.fill();
+      c.strokeStyle = "#7FB6E8"; c.lineWidth = .012;
       c.beginPath(); c.moveTo(0, H/2); c.lineTo(W, H/2); c.stroke();
       c.beginPath(); c.arc(W/2, H/2, .14, 0, Math.PI*2); c.stroke();
       // goals (top = theirs, bottom = mine in view)
@@ -791,7 +794,7 @@ export function initGames(ctx){
       paddle(c, pt, css("--grape")); paddle(c, pm, css("--accent"));
       // puck
       const pp = toView(!host && puck._vx != null ? {x:puck._vx, y:puck._vy} : puck);
-      c.fillStyle = css("--ink"); c.beginPath(); c.arc(pp.x, pp.y, BR, 0, Math.PI*2); c.fill();
+      c.fillStyle = "#14163F"; c.beginPath(); c.arc(pp.x, pp.y, BR, 0, Math.PI*2); c.fill();
       c.fillStyle = "rgba(255,255,255,.35)"; c.beginPath(); c.arc(pp.x-.012, pp.y-.012, BR*.45, 0, Math.PI*2); c.fill();
       // overlays
       const msg = !otherHere && g.status === "playing" && !g.winner ? `Waiting for ${nameOf(side === "p1" ? g.p2 : g.p1)} to open the game…`
